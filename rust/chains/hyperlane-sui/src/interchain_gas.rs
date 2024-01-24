@@ -5,10 +5,10 @@ use async_trait::async_trait;
 use hyperlane_core::{
     ChainCommunicationError, ChainResult, ContractLocator, HyperlaneChain, HyperlaneContract, HyperlaneDomain, HyperlaneProvider, Indexer, InterchainGasPaymaster, InterchainGasPayment, LogMeta, H256
 };
-use sui_sdk::types::digests::TransactionDigest;
+use sui_sdk::types::{base_types::ObjectID, digests::TransactionDigest};
 use tracing::{info, instrument};
 use hex;
-use crate::{ConnectionConf, SuiHpProvider, SuiRpcClient};
+use crate::{get_filtered_events, ConnectionConf, SuiHpProvider, SuiRpcClient};
 use::sui_sdk::types::base_types::SuiAddress;
 
 /// Format an address to bytes and hex literal. 
@@ -80,6 +80,7 @@ impl InterchainGasPaymaster for SuiInterchainGasPaymaster {}
 pub struct SuiInterchainGasPaymasterIndexer {
     sui_client: SuiRpcClient,
     package_address: SuiAddress,
+    package_id: Option<ObjectID>,
 }
 
 impl SuiInterchainGasPaymasterIndexer {
@@ -92,10 +93,33 @@ impl SuiInterchainGasPaymasterIndexer {
             .block_on(async {
                 SuiRpcClient::new(conf.url.to_string()).await
             }).expect("Failed to create SuiRpcClient");
-        Self {
-            sui_client,
-            package_address,
+        let owned_objects = tokio::runtime::Runtime::new()
+            .expect("Failed to create runtime")
+            .block_on(async {
+                sui_client
+                    .read_api()
+                    .get_owned_objects(package_address, None, None, None)
+                    .await
+                    .expect("Failed to get owned objects")
+            });
+        let object = owned_objects
+            .data
+            .first()
+            .unwrap_or_else(|| panic!("No owned objects found for package address: {}", package_address.to_hex_literal()));
+        if let Some(data) = &object.data {
+            return Self {
+                sui_client,
+                package_address,
+                package_id: Some(data.object_id)
+            };
+        } else {
+           Self {
+                sui_client,
+                package_address,
+                package_id: None, 
+            } 
         }
+         
     }
 }
 
@@ -106,11 +130,12 @@ impl Indexer<InterchainGasPayment> for SuiInterchainGasPaymasterIndexer {
         &self,
         range: RangeInclusive<u32>,
     ) -> ChainResult<Vec<(InterchainGasPayment, LogMeta)>> {
-        //@TODO: We need a TransactionDigest to get events from sui, so we may need to make
-        //range some generic type. Revist.
-        //let events = self.sui_client.event_api().get_events(digest).await?;
-        //Ok(events)
-        todo!()
+        get_filtered_events(
+            &self.sui_client,
+            &self.package_id,
+            &format!("{}::igps::IgpState", self.package_address.to_hex_literal()),
+            range,
+        ).await?
     }
 
     /// Sui is a DAG-based blockchain and uses checkpoints for node 
@@ -119,7 +144,6 @@ impl Indexer<InterchainGasPayment> for SuiInterchainGasPaymasterIndexer {
     /// latest checkpoint sequence number.
     #[instrument(level = "debug", err, ret, skip(self))]
     async fn get_finalized_block_number(&self) -> ChainResult<u32> {
-        
         let latest_checkpoint = match self
             .sui_client.read_api().get_latest_checkpoint_sequence_number().await {
                 Ok(checkpoint) => checkpoint,

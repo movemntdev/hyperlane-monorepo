@@ -9,12 +9,13 @@ pub struct ConnectionConf {
     pub url: Url,
 }
 
-// Raw Sui connection configration used for better deserialization errors.
+/// Raw Sui connection configration used for better deserialization errors.
 #[derive(Debug, Clone)]
 pub struct DeprecatedRawConnectionConf {
     url: Option<String>,
 }
 
+/// Error type for Sui connection configuration
 #[derive(thiserror::Error, Debug)]
 pub enum ConnectionConfError {
     /// Missing `url` for connection configuration
