@@ -2,7 +2,7 @@ use ethers::prelude::Selector;
 use h_cosmos::CosmosProvider;
 use std::collections::HashMap;
 
-use eyre::{eyre, Context, Result};
+use eyre::{eyre, Chain, Context, Result};
 
 use ethers_prometheus::middleware::{ChainInfo, ContractInfo, PrometheusMiddlewareConf};
 use hyperlane_core::{
@@ -62,6 +62,8 @@ pub enum ChainConnectionConf {
     Sealevel(h_sealevel::ConnectionConf),
     /// Cosmos configuration.
     Cosmos(h_cosmos::ConnectionConf),
+    /// Sui configuration.
+    Sui(h_sui::ConnectionConf),
 }
 
 impl ChainConnectionConf {
@@ -72,6 +74,7 @@ impl ChainConnectionConf {
             Self::Fuel(_) => HyperlaneDomainProtocol::Fuel,
             Self::Sealevel(_) => HyperlaneDomainProtocol::Sealevel,
             Self::Cosmos(_) => HyperlaneDomainProtocol::Cosmos,
+            Self::Sui(_) => HyperlaneDomainProtocol::Sui,
         }
     }
 }
@@ -132,6 +135,10 @@ impl ChainConf {
                 )?;
                 Ok(Box::new(provider) as Box<dyn HyperlaneProvider>)
             }
+            ChainConnectionConf::Sui(conf) => {
+                let provider = h_sui::SuiProvider::new(locator.domain.clone(), conf.clone())?;
+                Ok(Box::new(provider) as Box<dyn HyperlaneProvider>)
+            }
         }
         .context(ctx)
     }
@@ -164,6 +171,12 @@ impl ChainConf {
                     .map(|m| Box::new(m) as Box<dyn Mailbox>)
                     .map_err(Into::into)
             }
+            ChainConnectionConf::Sui(conf) => {
+                let keypair = self.sui_signer().await.context(ctx)?;
+                h_sui::SuiMailbox::new(conf.clone(), locator.clone(), keypair)
+                    .map(|m| Box::new(m) as Box<dyn Mailbox>)
+                    .map_err(Into::into)
+            }
         }
         .context(ctx)
     }
@@ -193,6 +206,12 @@ impl ChainConf {
                 let signer = self.cosmos_signer().await.context(ctx)?;
                 let hook =
                     h_cosmos::CosmosMerkleTreeHook::new(conf.clone(), locator.clone(), signer)?;
+
+                Ok(Box::new(hook) as Box<dyn MerkleTreeHook>)
+            }
+            ChainConnectionConf::Sui(conf) => {
+                let keypair = self.sui_signer().await.context(ctx)?;
+                let hook = h_sui::SuiMerkleTreeHook::new(conf.clone(), locator.clone(), keypair)?;
 
                 Ok(Box::new(hook) as Box<dyn MerkleTreeHook>)
             }
@@ -235,6 +254,10 @@ impl ChainConf {
                 )?);
                 Ok(indexer as Box<dyn SequenceIndexer<HyperlaneMessage>>)
             }
+            ChainConnectionConf::Sui(conf) => {
+                let indexer = Box::new(h_sui::SuiMailboxIndexer::new(conf, locator)?);
+                Ok(indexer as Box<dyn SequencerIndexer<HyperlaneMessage>>)
+            }
         }
         .context(ctx)
     }
@@ -272,6 +295,10 @@ impl ChainConf {
                     signer,
                     self.reorg_period,
                 )?);
+                Ok(indexer as Box<dyn SequenceIndexer<H256>>)
+            }
+            ChainConnectionConf::Sui(conf) => {
+                let indexer = Box::new(h_sui::SuiMailboxIndexer::new(conf, locator)?);
                 Ok(indexer as Box<dyn SequenceIndexer<H256>>)
             }
         }
@@ -313,6 +340,10 @@ impl ChainConf {
                 )?);
                 Ok(paymaster as Box<dyn InterchainGasPaymaster>)
             }
+            ChainConnectionConf::Sui(conf) => {
+                let paymaster = Box::new(h_sui::SuiInterchainGasPaymaster::new(conf, &locator)?);
+                Ok(paymaster as Box<dyn InterchainGasPaymaster>)
+            }
         }
         .context(ctx)
     }
@@ -351,6 +382,11 @@ impl ChainConf {
                     locator,
                     self.reorg_period,
                 )?);
+                Ok(indexer as Box<dyn SequenceIndexer<InterchainGasPayment>>)
+            }
+            ChainConnectionConf::Sui(conf) => {
+                let indexer =
+                    Box::new(h_sui::SuiInterchainGasPaymasterIndexer::new(conf, locator)?);
                 Ok(indexer as Box<dyn SequenceIndexer<InterchainGasPayment>>)
             }
         }
@@ -397,6 +433,10 @@ impl ChainConf {
                 )?);
                 Ok(indexer as Box<dyn SequenceIndexer<MerkleTreeInsertion>>)
             }
+            ChainConnectionConf::Sui(_) => {
+                let indexer = Box::new(h_sui::SuiMerkleTreeHookIndexer::new());
+                Ok(indexer as Box<dyn SequenceIndexer<MerkleTreeInsertion>>)
+            }
         }
         .context(ctx)
     }
@@ -430,6 +470,10 @@ impl ChainConf {
             }
             ChainConnectionConf::Sui(conf) => {
                 let keypair = self.sui_signer().await.context("Announcing Validator")?;
+                let va = Box::new(h_sui::SuiValidatorAnnounce::new(conf, locator, keypair));
+                Ok(va as Box<dyn ValidatorAnnounce>)
+            }
+            ChainConnectionConf::Sui(_) => {
                 let va = Box::new(h_sui::SuiValidatorAnnounce::new(conf, locator, keypair));
                 Ok(va as Box<dyn ValidatorAnnounce>)
             }
@@ -472,6 +516,13 @@ impl ChainConf {
                 )?);
                 Ok(ism as Box<dyn InterchainSecurityModule>)
             }
+            ChainConnectionConf::Sui(conf) => {
+                let keypair = self.sui_signer().await.context(ctx)?;
+                let ism = Box::new(h_sui::SuiInterchainSecurityModule::new(
+                    conf, locator, keypair,
+                ));
+                Ok(ism as Box<dyn InterchainSecurityModule>)
+            }
         }
         .context(ctx)
     }
@@ -504,6 +555,11 @@ impl ChainConf {
                     locator.clone(),
                     signer,
                 )?);
+                Ok(ism as Box<dyn MultisigIsm>)
+            }
+            ChainConnectionConf::Suif(conf) => {
+                let keypair = self.sui_signer().await.context(ctx)?;
+                let ism = Box::new(h_sui::SuiMultisigIsm::new(conf, locator, keypair));
                 Ok(ism as Box<dyn MultisigIsm>)
             }
         }
@@ -540,6 +596,9 @@ impl ChainConf {
                 )?);
                 Ok(ism as Box<dyn RoutingIsm>)
             }
+            ChainConnectionConf::Sui(conf) => {
+                Err(eyre!("Sui does not support routing ISM yet")).context(ctx)
+            }
         }
         .context(ctx)
     }
@@ -575,6 +634,9 @@ impl ChainConf {
 
                 Ok(ism as Box<dyn AggregationIsm>)
             }
+            ChainConnectionConf::Sui(conf) => {
+                Err(eyre!("Sui does not support aggregation ISM yet")).context(ctx)
+            }
         }
         .context(ctx)
     }
@@ -603,6 +665,9 @@ impl ChainConf {
             ChainConnectionConf::Cosmos(_) => {
                 Err(eyre!("Cosmos does not support CCIP read ISM yet")).context(ctx)
             }
+            ChainConnectionConf::Sui(conf) => {
+                Err(eyre!("Sui does not support CCIP read ISM yet")).context(ctx)
+            }
         }
         .context(ctx)
     }
@@ -627,6 +692,7 @@ impl ChainConf {
                     Box::new(conf.build::<h_sealevel::Keypair>().await?)
                 }
                 ChainConnectionConf::Cosmos(_) => Box::new(conf.build::<h_cosmos::Signer>().await?),
+                ChainConnectionConf::Sui(_) => Box::new(conf.build::<h_sui::Keypair>().await?),
             };
             Ok(Some(chain_signer))
         } else {

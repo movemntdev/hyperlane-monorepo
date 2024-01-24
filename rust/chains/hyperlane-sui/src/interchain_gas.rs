@@ -36,7 +36,7 @@ impl AddressFormatter for SuiAddress {
 pub struct SuiInterchainGasPaymaster {
     domain: HyperlaneDomain,
     package_address: SuiAddress,
-    sui_client_url: String,
+    rest_url: String,
 }
 
 impl SuiInterchainGasPaymaster {
@@ -44,11 +44,10 @@ impl SuiInterchainGasPaymaster {
     pub fn new(conf: &ConnectionConf, locator: &ContractLocator) -> Self {
         let package_address = 
             SuiAddress::from_bytes(<[u8; 32]>::from(locator.address)).unwrap();
-        let sui_client_url = conf.url.to_string();
         Self {
             domain: locator.domain.clone(),
+            rest_url: conf.url.to_string(),
             package_address,
-            sui_client_url,
         }
     }
 }
@@ -63,11 +62,12 @@ impl HyperlaneChain for SuiInterchainGasPaymaster {
     fn domain(&self) -> &HyperlaneDomain {
         &self.domain
     }
+
     fn provider(&self) -> Box<dyn HyperlaneProvider> {
        let sui_provider = tokio::runtime::Runtime::new()
             .expect("Failed to create runtime")
             .block_on(async {
-                SuiHpProvider::new(self.domain.clone(), self.sui_client_url.clone()).await
+                SuiHpProvider::new(self.domain.clone(), self.rest_url.clone()).await
             }).expect("Failed to create SuiHpProvider");
         Box::new(sui_provider) 
     }
@@ -113,19 +113,19 @@ impl Indexer<InterchainGasPayment> for SuiInterchainGasPaymasterIndexer {
         todo!()
     }
 
+    /// Sui is a DAG-based blockchain and uses checkpoints for node 
+    /// synchronization and global transaction ordering. So this method when 
+    /// implemented for `SuiInterchainGasPaymasterIndexer` will return the
+    /// latest checkpoint sequence number.
     #[instrument(level = "debug", err, ret, skip(self))]
     async fn get_finalized_block_number(&self) -> ChainResult<u32> {
-        // Sui is a DAG-based blockchain and uses checkpoints for node 
-        // synchronization and global transaction ordering.
-        // We need Indexer of different type for Sui. Revist.
+        
+        let latest_checkpoint = match self
+            .sui_client.read_api().get_latest_checkpoint_sequence_number().await {
+                Ok(checkpoint) => checkpoint,
+                Err(e) => return Err(ChainCommunicationError::from_other(e).into()),
+            };
 
-        // let latest_checkpoint = match self
-        //     .sui_client.read_api().get_checkpoint(latest_checkpoint).await {
-        //         Ok(checkpoint) => checkpoint,
-        //         Err(e) => return Err(ChainCommunicationError::from_other(e).into()),
-        //     };
-
-        //Ok(latest_checkpoint as u32)
-        todo!()
+        Ok(latest_checkpoint as u32)
     }
 }

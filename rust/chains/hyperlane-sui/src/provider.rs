@@ -4,24 +4,25 @@ use hyperlane_core::{
 };
 use anyhow::Error;
 use async_trait::async_trait;
-use sui_sdk::types::base_types::SuiAddress;
+use sui_sdk::{types::base_types::SuiAddress, SuiClient};
 use crate::SuiRpcClient;
-
 
 /// A wrapper around a Sui provider to get generic blockchain information.
 #[derive(Debug)]
 pub struct SuiHpProvider {
     domain: HyperlaneDomain,
     sui_client: SuiRpcClient,
+    rest_url: String,
 }
 
 impl SuiHpProvider {
     /// Create a new Sui provider.
     pub async fn new(domain: HyperlaneDomain, rest_url: String) -> Result<Self, Error>{
-        let sui_client = SuiRpcClient::new(rest_url).await?;
+        let sui_client = SuiRpcClient::new(rest_url.clone()).await?;
             Ok(Self {
                 domain,
                 sui_client,
+                rest_url
             })
     }
 }
@@ -32,23 +33,23 @@ impl HyperlaneChain for SuiHpProvider {
     }
 
     fn provider(&self) -> Box<dyn HyperlaneProvider> {
-        Box::new(
-            SuiHpProvider {
-                domain: self.domain.clone(),
-                sui_client: self.sui_client,
-            }
-        )
+        let sui_provider = tokio::runtime::Runtime::new()
+            .expect("Failed to create runtime")
+            .block_on(async {
+                SuiHpProvider::new(self.domain.clone(), self.rest_url.clone()).await
+            }).expect("Failed to create SuiHpProvider");
+        Box::new(sui_provider) 
     }
 }
 
 #[async_trait]
 impl HyperlaneProvider for SuiHpProvider {
     async fn get_block_by_hash(&self, _has: &H256) -> ChainResult<BlockInfo> {
-        todo!()
+        todo!() // Cannot get block as Sui is DAG based. have to get checkpoint instead.
     }
 
     async fn get_txn_by_hash(&self, hash: &H256) -> ChainResult<TxnInfo> {
-        todo!()
+        todo!() // Cannot get by hash but have to get by Transaction Digest intead. 
     }
 
     async fn is_contract(&self, _address: &H256) -> ChainResult<bool> {
