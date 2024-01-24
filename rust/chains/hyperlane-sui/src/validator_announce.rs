@@ -7,16 +7,18 @@ use sui_sdk::rpc_types::SuiObjectDataOptions;
 use tracing::info;
 use tracing::{instrument, warn};
 
-use crate::{ConnectionConf, SuiHpProvider, SuiRpcClient, AddressFormatter};
+use crate::{AddressFormatter, ConnectionConf, SuiHpProvider, SuiRpcClient};
 use hyperlane_core::{
-    Announcement, ChainCommunicationError, ChainResult, ContractLocator, HyperlaneChain, HyperlaneContract, HyperlaneDomain, HyperlaneProvider, SignedType, TxOutcome, ValidatorAnnounce, H256, H512, U256
+    Announcement, ChainCommunicationError, ChainResult, ContractLocator, HyperlaneChain,
+    HyperlaneContract, HyperlaneDomain, HyperlaneProvider, SignedType, TxOutcome,
+    ValidatorAnnounce, H256, H512, U256,
 };
 
+use ::sui_sdk::types::base_types::SuiAddress;
 use anyhow::{Context, Result};
 use once_cell::sync::Lazy;
 use std::str::FromStr;
 use url::Url;
-use::sui_sdk::types::base_types::SuiAddress;
 
 /// A reference to a ValidatorAnnounce contract on Sui chain
 #[derive(Debug)]
@@ -77,15 +79,13 @@ impl HyperlaneChain for SuiValidatorAnnounce {
     }
 
     fn provider(&self) -> Box<dyn HyperlaneProvider> {
-       let sui_provider = tokio::runtime::Runtime::new()
+        let sui_provider = tokio::runtime::Runtime::new()
             .expect("Failed to create runtime")
             .block_on(async {
-                SuiHpProvider::new(
-                    self.domain.clone(), 
-                    self.client_url.clone(),
-                ).await
-            }).expect("Failed to create SuiHpProvider");
-        Box::new(sui_provider) 
+                SuiHpProvider::new(self.domain.clone(), self.client_url.clone()).await
+            })
+            .expect("Failed to create SuiHpProvider");
+        Box::new(sui_provider)
     }
 }
 
@@ -97,36 +97,27 @@ impl ValidatorAnnounce for SuiValidatorAnnounce {
     ) -> ChainResult<Vec<Vec<String>>> {
         let validator_addresses: Vec<SuiAddress> = validators
             .iter()
-            .map(|validator| SuiAddress::from_bytes(validator.0)) 
+            .map(|v| SuiAddress::from_bytes(v).expect("Failed to convert to SuiAddress"))
             .collect();
 
-
-        let storage_locations = Vec::new();
+        let mut storage_locations = Vec::new();
         for address in validator_addresses {
-            let object_id = self
+            // Store the result of the async call in a variable
+            let object_response_result = self
                 .sui_client
                 .read_api()
                 .get_owned_objects(address, None, None, None)
-                .await?
-                .get(0)
+                .await
+                .unwrap();
+
+            // Now you can borrow from `object_response_result` safely
+            let object_response = object_response_result
+                .data
+                .first() // TODO: This may not always be first. Unit test this.  
                 .expect("No object found");
 
-            let response = self
-                .sui_client
-                .read_api()
-                .get_object_with_options(object_id, SuiObjectDataOptions {
-                    show_type: true,
-                    show_owner: true,
-                    show_previous_transaction: true,
-                    show_display: true,
-                    show_content: true,
-                    show_bcs: true,
-                    show_storage_rebate: true,
-                })
-                .await?;
-
-            if let Some(data) = response.data {
-                storage_locations.push(serde_json::from_str(&data))
+            if let Some(data) = &object_response.data {
+                storage_locations.push(serde_json::from_str(&data.object_id.to_string()).unwrap());
             }
         }
         Ok(storage_locations)
@@ -155,7 +146,7 @@ impl ValidatorAnnounce for SuiValidatorAnnounce {
             .await
             .map_err(|e| {
                 warn!("Failed to announce contract call: {:?}", e);
-                ChainCommunicationError::AnnouncementFailed
+                ChainCommunicationError::SignerUnavailable
             })?;
 
         Ok(TxOutcome {

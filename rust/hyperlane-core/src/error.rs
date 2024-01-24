@@ -128,6 +128,9 @@ pub enum ChainCommunicationError {
     /// Big decimal parsing error
     #[error(transparent)]
     ParseBigDecimalError(#[from] ParseBigDecimalError),
+    /// Error reading Sui object
+    #[error("Error reading Sui object: {0}")]
+    SuiObjectReadError(String),
 }
 
 impl ChainCommunicationError {
