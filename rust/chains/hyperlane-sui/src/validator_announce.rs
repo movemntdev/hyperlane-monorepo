@@ -102,7 +102,6 @@ impl ValidatorAnnounce for SuiValidatorAnnounce {
 
         let mut storage_locations = Vec::new();
         for address in validator_addresses {
-            // Store the result of the async call in a variable
             let object_response_result = self
                 .sui_client
                 .read_api()
@@ -110,7 +109,6 @@ impl ValidatorAnnounce for SuiValidatorAnnounce {
                 .await
                 .unwrap();
 
-            // Now you can borrow from `object_response_result` safely
             let object_response = object_response_result
                 .data
                 .first() // TODO: This may not always be first. Unit test this.  
