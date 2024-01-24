@@ -135,7 +135,8 @@ impl Indexer<InterchainGasPayment> for SuiInterchainGasPaymasterIndexer {
             &self.package_id,
             &format!("{}::igps::IgpState", self.package_address.to_hex_literal()),
             range,
-        ).await?
+        )
+        .await
     }
 
     /// Sui is a DAG-based blockchain and uses checkpoints for node 

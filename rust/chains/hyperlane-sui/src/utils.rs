@@ -2,14 +2,22 @@ use crate::{AddressFormatter, SuiRpcClient, TxSpecificData};
 use hyperlane_core::{ChainCommunicationError, ChainResult, LogMeta, H256, H512, U256};
 use solana_sdk::account;
 use sui_sdk::{types::{base_types::{ObjectID, SuiAddress}, digests::TransactionDigest}, rpc_types::{EventFilter, SuiEvent}};
-use std::ops::RangeInclusive;
+use std::{ops::RangeInclusive, str::FromStr};
 
-pub async fn get_filtered_events(
+/// Convert address string to H256
+pub fn convert_hex_string_to_h256(addr: &str) -> Result<H256, String> {
+    let formated_addr = format!("{:0>64}", addr.to_string().trim_start_matches("0x"));
+    H256::from_str(&formated_addr).map_err(|e| e.to_string())
+}
+
+pub async fn get_filtered_events<T>(
     sui_client: &SuiRpcClient,
     package_id: &Option<ObjectID>,
     struct_tag: &str,
     range: RangeInclusive<u64>,
-) -> ChainResult<Vec<(SuiEvent, LogMeta)>> {
+) -> ChainResult<Vec<(T, LogMeta)>> 
+{
+
     if package_id.is_none() {
         return Err(ChainCommunicationError::SuiObjectReadError(
             "Package ID is None".to_string(),
@@ -23,11 +31,17 @@ pub async fn get_filtered_events(
             None,
             true,
         )
-        .await?;
+        .await
+        .map_err(|e| {
+            ChainCommunicationError::SuiObjectReadError(format!(
+                "Failed to query events from Sui: {}",
+                e
+            ))
+        })?;
 
     //TODO: LogMeta will need to be an enum to handle different chains
     //the data its expecting here doesn't make much sense for Sui.
-    let parsed_events: Vec<(SuiEvent, LogMeta)> = events_page
+    let parsed_events: Vec<(T, LogMeta)> = events_page
         .data
         .into_iter()
         .map(|event| {
@@ -43,5 +57,5 @@ pub async fn get_filtered_events(
             (event, log_meta)
         })
         .collect();
-        todo!()
+    Ok(parsed_events)
 }
