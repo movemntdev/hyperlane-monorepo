@@ -63,15 +63,16 @@ pub async fn get_filtered_events(
     Ok(messages)
 }
 
+/// Attempts to get the module name from the chain
 pub async fn send_owned_objects_request(
     sui_client: &SuiRpcClient,
-    package_address: SuiAddress,
+    package_address: &SuiAddress,
     module_name: String,
 ) -> ChainResult<String> {
     // Attempt to get the owned objects from the client
     let response = sui_client
         .read_api()
-        .get_owned_objects(package_address, None, None, Some(1))
+        .get_owned_objects(*package_address, None, None, Some(1))
         .await
         .map_err(ChainCommunicationError::from_other)?;
 
