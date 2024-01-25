@@ -1,4 +1,7 @@
-use crate::{AddressFormatter, GasPaymentEventData, SuiRpcClient, TxSpecificData};
+use crate::{
+    AddressFormatter, GasPaymentEventData, HyperlaneSuiError, SuiRpcClient, TxSpecificData,
+};
+use anyhow::{Chain, Error};
 use hyperlane_core::{
     ChainCommunicationError, ChainResult, InterchainGasPayment, LogMeta, H256, H512, U256,
 };
@@ -6,10 +9,11 @@ use serde_json::Value;
 use solana_sdk::account;
 use std::{ops::RangeInclusive, str::FromStr};
 use sui_sdk::{
-    rpc_types::{EventFilter, SuiEvent},
+    rpc_types::{EventFilter, SuiEvent, SuiParsedData},
     types::{
-        base_types::{ObjectID, SuiAddress},
+        base_types::{MoveObjectType, ObjectID, SuiAddress},
         digests::TransactionDigest,
+        object::MoveObject,
     },
 };
 
@@ -59,10 +63,38 @@ pub async fn get_filtered_events(
     Ok(messages)
 }
 
-pub async fn send_view_request(
+pub async fn send_owned_objects_request(
     sui_client: &SuiRpcClient,
-    package_address: String,
+    package_address: SuiAddress,
     module_name: String,
-    function_name: String,
-    type_arguments: <Vec<MoveType>>
-)
+) -> ChainResult<String> {
+    // Attempt to get the owned objects from the client
+    let response = sui_client
+        .read_api()
+        .get_owned_objects(package_address, None, None, Some(1))
+        .await
+        .map_err(ChainCommunicationError::from_other)?;
+
+    // Extract the first item's data if available
+    let first_item_data = response
+        .data
+        .first()
+        .and_then(|item| item.data.as_ref())
+        .and_then(|data| data.content.clone())
+        .ok_or_else(|| ChainCommunicationError::SuiObjectReadError("No data found".to_string()))?;
+
+    // Match against the parsed data
+    match first_item_data {
+        SuiParsedData::Package(pkg) => {
+            // Attempt to find the module name in the disassembled package keys
+            let module_name_key = pkg
+                .disassembled
+                .keys()
+                .find(|&k| k == &module_name)
+                .ok_or_else(|| ChainCommunicationError::SuiObjectReadError(format!("Module '{}' not found in package", module_name)))?;
+            Ok(module_name_key.to_string())
+        }
+        // Handle other cases or unimplemented data types
+        _ => Err(ChainCommunicationError::SuiObjectReadError("Unexpected data type".to_string())),
+    }
+}

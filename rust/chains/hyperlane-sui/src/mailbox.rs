@@ -32,9 +32,7 @@ impl SuiMailbox {
     }
 
     async fn fetch_module_name(&self, package_address: &SuiAddress) -> ChainResult<Vec<u8>> {
-        let view_response = utils::send_view_request(
-
-        )
-        .await?;
+        
+        let view_response = utils::send_owned_objects_request().await?;
     }
 }
