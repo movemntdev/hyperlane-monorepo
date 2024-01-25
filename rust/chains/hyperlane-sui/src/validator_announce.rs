@@ -83,8 +83,7 @@ impl HyperlaneChain for SuiValidatorAnnounce {
             .expect("Failed to create runtime")
             .block_on(async {
                 SuiHpProvider::new(self.domain.clone(), self.client_url.clone()).await
-            })
-            .expect("Failed to create SuiHpProvider");
+            });
         Box::new(sui_provider)
     }
 }
@@ -99,7 +98,6 @@ impl ValidatorAnnounce for SuiValidatorAnnounce {
             .iter()
             .map(|v| SuiAddress::from_bytes(v).expect("Failed to convert to SuiAddress"))
             .collect();
-
         let mut storage_locations = Vec::new();
         for address in validator_addresses {
             let object_response_result = self
@@ -108,12 +106,10 @@ impl ValidatorAnnounce for SuiValidatorAnnounce {
                 .get_owned_objects(address, None, None, None)
                 .await
                 .unwrap();
-
             let object_response = object_response_result
                 .data
-                .first() // TODO: This may not always be first. Unit test this.  
+                .first() // TODO: This may not always be first. Unit test this.
                 .expect("No object found");
-
             if let Some(data) = &object_response.data {
                 storage_locations.push(serde_json::from_str(&data.object_id.to_string()).unwrap());
             }

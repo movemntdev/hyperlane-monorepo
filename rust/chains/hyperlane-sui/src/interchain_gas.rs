@@ -1,17 +1,18 @@
-
 use std::ops::RangeInclusive;
 
+use crate::{get_filtered_events, ConnectionConf, SuiHpProvider, SuiRpcClient};
+use ::sui_sdk::types::base_types::SuiAddress;
 use async_trait::async_trait;
+use hex;
 use hyperlane_core::{
-    ChainCommunicationError, ChainResult, ContractLocator, HyperlaneChain, HyperlaneContract, HyperlaneDomain, HyperlaneProvider, Indexer, InterchainGasPaymaster, InterchainGasPayment, LogMeta, H256
+    ChainCommunicationError, ChainResult, ContractLocator, HyperlaneChain, HyperlaneContract,
+    HyperlaneDomain, HyperlaneProvider, Indexer, InterchainGasPaymaster, InterchainGasPayment,
+    LogMeta, H256,
 };
 use sui_sdk::types::{base_types::ObjectID, digests::TransactionDigest};
 use tracing::{info, instrument};
-use hex;
-use crate::{get_filtered_events, ConnectionConf, SuiHpProvider, SuiRpcClient};
-use::sui_sdk::types::base_types::SuiAddress;
 
-/// Format an address to bytes and hex literal. 
+/// Format an address to bytes and hex literal.
 pub trait AddressFormatter {
     /// Convert an address to bytes.
     fn to_bytes(&self) -> [u8; 32];
@@ -42,8 +43,7 @@ pub struct SuiInterchainGasPaymaster {
 impl SuiInterchainGasPaymaster {
     /// Create a new Sui IGP.
     pub fn new(conf: &ConnectionConf, locator: &ContractLocator) -> Self {
-        let package_address = 
-            SuiAddress::from_bytes(<[u8; 32]>::from(locator.address)).unwrap();
+        let package_address = SuiAddress::from_bytes(<[u8; 32]>::from(locator.address)).unwrap();
         Self {
             domain: locator.domain.clone(),
             rest_url: conf.url.to_string(),
@@ -64,12 +64,12 @@ impl HyperlaneChain for SuiInterchainGasPaymaster {
     }
 
     fn provider(&self) -> Box<dyn HyperlaneProvider> {
-       let sui_provider = tokio::runtime::Runtime::new()
+        let sui_provider = tokio::runtime::Runtime::new()
             .expect("Failed to create runtime")
             .block_on(async {
                 SuiHpProvider::new(self.domain.clone(), self.rest_url.clone()).await
-            }).expect("Failed to create SuiHpProvider");
-        Box::new(sui_provider) 
+            });
+        Box::new(sui_provider)
     }
 }
 
@@ -86,13 +86,11 @@ pub struct SuiInterchainGasPaymasterIndexer {
 impl SuiInterchainGasPaymasterIndexer {
     /// Create a new Sui IGP indexer.
     pub fn new(conf: &ConnectionConf, locator: ContractLocator) -> Self {
-        let package_address = 
-            SuiAddress::from_bytes(<[u8; 32]>::from(locator.address)).unwrap();
+        let package_address = SuiAddress::from_bytes(<[u8; 32]>::from(locator.address)).unwrap();
         let sui_client = tokio::runtime::Runtime::new()
             .expect("Failed to create runtime")
-            .block_on(async {
-                SuiRpcClient::new(conf.url.to_string()).await
-            }).expect("Failed to create SuiRpcClient");
+            .block_on(async { SuiRpcClient::new(conf.url.to_string()).await })
+            .expect("Failed to create SuiRpcClient");
         let owned_objects = tokio::runtime::Runtime::new()
             .expect("Failed to create runtime")
             .block_on(async {
@@ -102,24 +100,25 @@ impl SuiInterchainGasPaymasterIndexer {
                     .await
                     .expect("Failed to get owned objects")
             });
-        let object = owned_objects
-            .data
-            .first()
-            .unwrap_or_else(|| panic!("No owned objects found for package address: {}", package_address.to_hex_literal()));
+        let object = owned_objects.data.first().unwrap_or_else(|| {
+            panic!(
+                "No owned objects found for package address: {}",
+                package_address.to_hex_literal()
+            )
+        });
         if let Some(data) = &object.data {
             return Self {
                 sui_client,
                 package_address,
-                package_id: Some(data.object_id)
+                package_id: Some(data.object_id),
             };
         } else {
-           Self {
+            Self {
                 sui_client,
                 package_address,
-                package_id: None, 
-            } 
+                package_id: None,
+            }
         }
-         
     }
 }
 
@@ -139,17 +138,21 @@ impl Indexer<InterchainGasPayment> for SuiInterchainGasPaymasterIndexer {
         .await
     }
 
-    /// Sui is a DAG-based blockchain and uses checkpoints for node 
-    /// synchronization and global transaction ordering. So this method when 
+    /// Sui is a DAG-based blockchain and uses checkpoints for node
+    /// synchronization and global transaction ordering. So this method when
     /// implemented for `SuiInterchainGasPaymasterIndexer` will return the
     /// latest checkpoint sequence number.
     #[instrument(level = "debug", err, ret, skip(self))]
     async fn get_finalized_block_number(&self) -> ChainResult<u32> {
         let latest_checkpoint = match self
-            .sui_client.read_api().get_latest_checkpoint_sequence_number().await {
-                Ok(checkpoint) => checkpoint,
-                Err(e) => return Err(ChainCommunicationError::from_other(e).into()),
-            };
+            .sui_client
+            .read_api()
+            .get_latest_checkpoint_sequence_number()
+            .await
+        {
+            Ok(checkpoint) => checkpoint,
+            Err(e) => return Err(ChainCommunicationError::from_other(e).into()),
+        };
 
         Ok(latest_checkpoint as u32)
     }

@@ -2,6 +2,7 @@ use std::str::FromStr;
 
 use hyperlane_core::{ChainCommunicationError, InterchainGasPayment, U256};
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use sui_sdk::{rpc_types::SuiEvent, types::event::EventID};
 
 use crate::convert_hex_string_to_h256;
@@ -31,9 +32,9 @@ pub struct GasPaymentEventData {
     pub event_id: EventID,
 }
 
-impl TryFrom<SuiEvent> for GasPaymentEventData {
+impl TryFrom<Value> for GasPaymentEventData {
     type Error = ChainCommunicationError;
-    fn try_from(event: SuiEvent) -> Result<Self, Self::Error> {
+    fn try_from(event: serde_json::Value) -> Result<Self, Self::Error> {
         serde_json::from_str::<Self>(&event.to_string())
             .map_err(ChainCommunicationError::from_other)
     }

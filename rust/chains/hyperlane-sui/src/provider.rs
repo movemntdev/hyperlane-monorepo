@@ -1,11 +1,12 @@
-use std::str::FromStr;
-use hyperlane_core::{
-    BlockInfo, ChainCommunicationError, ChainResult, HyperlaneChain, HyperlaneDomain, HyperlaneProvider, TxnInfo, H256, U256
-};
+use crate::SuiRpcClient;
 use anyhow::Error;
 use async_trait::async_trait;
+use hyperlane_core::{
+    BlockInfo, ChainCommunicationError, ChainResult, HyperlaneChain, HyperlaneDomain,
+    HyperlaneProvider, TxnInfo, H256, U256,
+};
+use std::str::FromStr;
 use sui_sdk::{types::base_types::SuiAddress, SuiClient};
-use crate::SuiRpcClient;
 
 /// A wrapper around a Sui provider to get generic blockchain information.
 #[derive(Debug)]
@@ -17,13 +18,15 @@ pub struct SuiHpProvider {
 
 impl SuiHpProvider {
     /// Create a new Sui provider.
-    pub async fn new(domain: HyperlaneDomain, rest_url: String) -> Result<Self, Error>{
-        let sui_client = SuiRpcClient::new(rest_url.clone()).await?;
-            Ok(Self {
-                domain,
-                sui_client,
-                rest_url
-            })
+    pub async fn new(domain: HyperlaneDomain, rest_url: String) -> Self {
+        let sui_client = SuiRpcClient::new(rest_url.clone())
+            .await
+            .expect("Failed to create SuiRpcClient");
+        Self {
+            domain,
+            sui_client,
+            rest_url,
+        }
     }
 }
 
@@ -37,8 +40,8 @@ impl HyperlaneChain for SuiHpProvider {
             .expect("Failed to create runtime")
             .block_on(async {
                 SuiHpProvider::new(self.domain.clone(), self.rest_url.clone()).await
-            }).expect("Failed to create SuiHpProvider");
-        Box::new(sui_provider) 
+            });
+        Box::new(sui_provider)
     }
 }
 
@@ -49,7 +52,7 @@ impl HyperlaneProvider for SuiHpProvider {
     }
 
     async fn get_txn_by_hash(&self, hash: &H256) -> ChainResult<TxnInfo> {
-        todo!() // Cannot get by hash but have to get by Transaction Digest intead. 
+        todo!() // Cannot get by hash but have to get by Transaction Digest intead.
     }
 
     async fn is_contract(&self, _address: &H256) -> ChainResult<bool> {
@@ -62,10 +65,12 @@ impl HyperlaneProvider for SuiHpProvider {
         let balance = match self
             .sui_client
             .coin_read_api()
-            .get_balance(SuiAddress::from_str(&address).unwrap(), Some(coin_type)).await {
-                Ok(balance) => balance,
-                Err(e) => return Err(ChainCommunicationError::from_other(e).into()),
-            };
+            .get_balance(SuiAddress::from_str(&address).unwrap(), Some(coin_type))
+            .await
+        {
+            Ok(balance) => balance,
+            Err(e) => return Err(ChainCommunicationError::from_other(e).into()),
+        };
         Ok(balance.total_balance.into())
     }
 }

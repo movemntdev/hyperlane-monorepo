@@ -1,7 +1,8 @@
-use crate::{AddressFormatter, SuiRpcClient, TxSpecificData};
+use crate::{AddressFormatter, GasPaymentEventData, SuiRpcClient, TxSpecificData};
 use hyperlane_core::{
     ChainCommunicationError, ChainResult, InterchainGasPayment, LogMeta, H256, H512, U256,
 };
+use serde_json::Value;
 use solana_sdk::account;
 use std::{ops::RangeInclusive, str::FromStr};
 use sui_sdk::{
@@ -40,11 +41,9 @@ pub async fn get_filtered_events(
             ))
         })?;
 
-    //TODO: LogMeta will need to be an enum to handle different chains
-    //the data its expecting here doesn't make much sense for Sui.
-    let mut messages: Vec<(InterchainGasPayment, LogMeta)> = Vec::with_capacity((range.end() - range.start()) as usize);
+    let mut messages: Vec<(InterchainGasPayment, LogMeta)> =
+        Vec::with_capacity((range.end() - range.start()) as usize);
     for event in events_page.data.into_iter() {
-        //let json_data = event.parsed_json.clone();
         // Mainly using dummy values untile LogMeta is an enum
         let log_meta = LogMeta {
             address: event.sender.to_bytes().into(), // Should this be the sender?
@@ -54,7 +53,16 @@ pub async fn get_filtered_events(
             transaction_index: 0,    // Not sure what this val should be,
             log_index: U256::zero(), // No block structure in Sui
         };
-        messages.push((event.parsed_json.try_into()?, log_meta));
+        let gas_payment_event_data: GasPaymentEventData = event.parsed_json.try_into()?;
+        messages.push((gas_payment_event_data.try_into()?, log_meta));
     }
     Ok(messages)
 }
+
+pub async fn send_view_request(
+    sui_client: &SuiRpcClient,
+    package_address: String,
+    module_name: String,
+    function_name: String,
+    type_arguments: <Vec<MoveType>>
+)

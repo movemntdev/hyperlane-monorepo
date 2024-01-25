@@ -136,7 +136,8 @@ impl ChainConf {
                 Ok(Box::new(provider) as Box<dyn HyperlaneProvider>)
             }
             ChainConnectionConf::Sui(conf) => {
-                let provider = h_sui::SuiProvider::new(locator.domain.clone(), conf.clone())?;
+                let provider =
+                    h_sui::SuiHpProvider::new(locator.domain.clone(), conf.url.to_string()).await;
                 Ok(Box::new(provider) as Box<dyn HyperlaneProvider>)
             }
         }

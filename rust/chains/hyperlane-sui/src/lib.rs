@@ -12,8 +12,9 @@ mod validator_announce;
 mod trait_builder;
 mod types;
 mod utils;
+mod mailbox;
 
 pub use self::{
     client::*, interchain_gas::*, provider::*, trait_builder::*, validator_announce::*,
-    utils::*, types::*,
+    utils::*, types::*, mailbox::*,
 };
