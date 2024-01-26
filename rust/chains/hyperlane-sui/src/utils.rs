@@ -2,6 +2,7 @@ use crate::{
     AddressFormatter, GasPaymentEventData, HyperlaneSuiError, SuiRpcClient, TxSpecificData,
 };
 use anyhow::{Chain, Error};
+use shared_crypto::intent::Intent;
 use hyperlane_core::{
     ChainCommunicationError, ChainResult, InterchainGasPayment, LogMeta, H256, H512, U256,
 };
@@ -9,11 +10,13 @@ use serde_json::Value;
 use solana_sdk::account;
 use std::{ops::RangeInclusive, str::FromStr};
 use sui_sdk::{
-    rpc_types::{EventFilter, SuiEvent, SuiParsedData},
+    json::SuiJsonValue,
+    rpc_types::{EventFilter, SuiEvent, SuiParsedData, SuiTransactionBlockResponseOptions, SuiTypeTag},
     types::{
         base_types::{MoveObjectType, ObjectID, SuiAddress},
         digests::TransactionDigest,
         object::MoveObject,
+        transaction::{Transaction, TransactionData},
     },
 };
 
@@ -92,10 +95,56 @@ pub async fn send_owned_objects_request(
                 .disassembled
                 .keys()
                 .find(|&k| k == &module_name)
-                .ok_or_else(|| ChainCommunicationError::SuiObjectReadError(format!("Module '{}' not found in package", module_name)))?;
+                .ok_or_else(|| {
+                    ChainCommunicationError::SuiObjectReadError(format!(
+                        "Module '{}' not found in package",
+                        module_name
+                    ))
+                })?;
             Ok(module_name_key.to_string())
         }
         // Handle other cases or unimplemented data types
-        _ => Err(ChainCommunicationError::SuiObjectReadError("Unexpected data type".to_string())),
+        _ => Err(ChainCommunicationError::SuiObjectReadError(
+            "Unexpected data type".to_string(),
+        )),
     }
+}
+
+pub async fn move_view_call(
+    sui_client: &SuiRpcClient,
+    signer: &SuiAddress,
+    package_address: SuiAddress,
+    module_name: String,
+    function: String,
+    type_args: Vec<SuiTypeTag>,
+    args: Vec<SuiJsonValue>,
+) -> ChainResult<TransactionData> {
+    let package_obj_id = ObjectID::from_address(package_address.into());
+    let call = sui_client
+        .transaction_builder()
+        .move_call(
+            *signer,
+            package_obj_id,
+            &module_name,
+            &function,
+            type_args,
+            args,
+            None,
+            0,
+        )
+        .await
+        .expect("Failed to build transaction");
+    let signature = sui_client
+        .keystore
+        .sign_secure(*signer, call, Intent::sui_transaction())?;
+    let response = sui_client
+        .quorum_driver_api()
+        .execute_transaction_block(Transaction::from_data(call, vec![signature]), 
+        SuiTransactionBlockResponseOptions::full_content(), 
+        Some(ExecuteTransactionRequestType::WaitForLocalExecution),
+    )
+    .await
+    .expect("Failed to execute transaction");
+    response.
+    todo!()
 }
