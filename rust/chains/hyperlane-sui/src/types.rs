@@ -3,7 +3,11 @@ use std::str::FromStr;
 use hyperlane_core::{ChainCommunicationError, InterchainGasPayment, H256, U256};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use sui_sdk::{json::SuiJsonValue, rpc_types::SuiEvent, types::{base_types::SuiAddress, event::EventID}};
+use sui_sdk::{
+    json::SuiJsonValue,
+    rpc_types::SuiEvent,
+    types::{base_types::SuiAddress, event::EventID},
+};
 
 use crate::convert_hex_string_to_h256;
 
@@ -22,7 +26,10 @@ impl TryIntoPrimitive for SuiJsonValue {
 
     fn try_into_h256(&self) -> Result<H256, anyhow::Error> {
         match self.to_json_value() {
-            Value::String(s) => Ok(convert_hex_string_to_h256(&s)?),
+            Value::String(s) => {
+                // Improve Error handling here, get rid of expect
+                Ok(convert_hex_string_to_h256(&s).expect("Failed to convert to H256"))
+            }
             _ => Err(anyhow::anyhow!("Failed to convert to H256")),
         }
     }
@@ -76,5 +83,3 @@ impl TryInto<InterchainGasPayment> for GasPaymentEventData {
         })
     }
 }
-
-

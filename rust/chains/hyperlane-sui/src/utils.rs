@@ -150,6 +150,39 @@ pub async fn move_view_call(
     }
 }
 
+pub async fn move_mutate_call(
+    sui_client: &SuiRpcClient,
+    sender: &SuiAddress,
+    payload:  
+) -> ChainResult<Vec<SuiExecutionResult>> {
+    let type_args = type_args
+        .into_iter()
+        .map(|tag| tag.try_into().expect("Invalid type tag"))
+        .collect::<Vec<TypeTag>>();
+    let mut ptb = ProgrammableTransactionBuilder::new();
+    let move_call = ptb.move_call(
+        ObjectID::from_address(package_address.into()),
+        Identifier::new(module_name).expect("Invalid module name"),
+        Identifier::new(function).expect("Invalid function name"),
+        type_args,
+        args,
+    )
+    .expect("Failed to build move call");
+    let tx = TransactionKind::ProgrammableTransaction(ptb.finish());
+    let inspect = sui_client
+        .read_api()
+        .dev_inspect_transaction_block(*sender, tx, None, None, None)
+        .await
+        .expect("Failed to get transaction block");
+    if let Some(execution_results) = inspect.results {
+        Ok(execution_results)
+    } else {
+        return Err(ChainCommunicationError::SuiObjectReadError(
+            "No execution results found".to_string(),
+        ));
+    }
+}
+
 pub async fn convert_keypair_to_sui_account(
     sui_client: &SuiRpcClient,
     payer: &Keypair,

@@ -1,12 +1,14 @@
-use std::str::FromStr;
+use std::{num::NonZeroU64, str::FromStr};
 
 use async_trait::async_trait;
 use base64::write;
 use hyperlane_core::{
-    ChainCommunicationError, ChainResult, ContractLocator, Encode, HyperlaneChain, HyperlaneContract, HyperlaneDomain, HyperlaneMessage, HyperlaneProvider, Mailbox, TxOutcome, H256, U256
+    ChainCommunicationError, ChainResult, ContractLocator, Encode, HyperlaneChain,
+    HyperlaneContract, HyperlaneDomain, HyperlaneMessage, HyperlaneProvider, Mailbox, TxOutcome,
+    H256, U256,
 };
-use solana_sdk::signature::Keypair;
 use solana_sdk::pubkey::ParsePubkeyError;
+use solana_sdk::signature::Keypair;
 use sui_sdk::{
     json::{MoveTypeLayout, SuiJsonValue},
     types::{base_types::SuiAddress, transaction::CallArg},
@@ -15,8 +17,8 @@ use tracing::instrument;
 use url::Url;
 
 use crate::{
-    move_view_call, send_owned_objects_request, convert_keypair_to_sui_address, AddressFormatter, ConnectionConf, SuiHpProvider,
-    SuiRpcClient, TryIntoPrimitive,
+    convert_keypair_to_sui_account, move_view_call, send_owned_objects_request, AddressFormatter,
+    ConnectionConf, SuiHpProvider, SuiRpcClient, TryIntoPrimitive,
 };
 
 /// A reference to a Mailbox contract on some Sui chain
@@ -33,7 +35,7 @@ impl SuiMailbox {
     pub fn new(
         conf: &ConnectionConf,
         locator: ContractLocator,
-        payer: Option<SuiAddress>,
+        payer: Option<Keypair>,
     ) -> ChainResult<Self> {
         let package_address = SuiAddress::from_bytes(<[u8; 32]>::from(locator.address)).unwrap();
         let sui_client = tokio::runtime::Runtime::new()
@@ -163,7 +165,7 @@ impl Mailbox for SuiMailbox {
         metadata: &[u8],
         _tx_gas_limit: Option<U256>,
     ) -> ChainResult<TxOutcome> {
-        let recipient= SuiAddress::from_bytes(message.recipient.0);
+        let recipient = SuiAddress::from_bytes(message.recipient.0).unwrap();
         let mut encoded_message = vec![];
         message.write_to(&mut encoded_message).unwrap();
 
@@ -172,7 +174,12 @@ impl Mailbox for SuiMailbox {
             .as_ref()
             .ok_or_else(|| ChainCommunicationError::SignerUnavailable)?;
 
-        let signer_account = convert_keypair_to_sui_account(&self.sui_client, payer).await?; 
+        let signer_account = convert_keypair_to_sui_account(&self.sui_client, payer)
+            .await
+            .expect("Failed to convert keypair to SuiAccount");
+        let recipient_module_name = self.fetch_package_name(&recipient).await.unwrap();
+        
+
         todo!()
     }
 }
