@@ -11,12 +11,9 @@ use solana_sdk::account;
 use std::{ops::RangeInclusive, str::FromStr};
 use sui_sdk::{
     json::SuiJsonValue,
-    rpc_types::{EventFilter, SuiEvent, SuiParsedData, SuiTransactionBlockResponseOptions, SuiTypeTag},
+    rpc_types::{DevInspectResults, EventFilter, SuiEvent, SuiParsedData, SuiTransactionBlockResponseOptions, SuiTypeTag},
     types::{
-        base_types::{MoveObjectType, ObjectID, SuiAddress},
-        digests::TransactionDigest,
-        object::MoveObject,
-        transaction::{Transaction, TransactionData},
+        base_types::{MoveObjectType, ObjectID, SuiAddress}, digests::TransactionDigest, object::MoveObject, programmable_transaction_builder::ProgrammableTransactionBuilder, quorum_driver_types::ExecuteTransactionRequestType, transaction::{Argument, CallArg, Command, ProgrammableMoveCall, ProgrammableTransaction, Transaction, TransactionData, TransactionKind}, Identifier, TypeTag
     },
 };
 
@@ -112,39 +109,31 @@ pub async fn send_owned_objects_request(
 
 pub async fn move_view_call(
     sui_client: &SuiRpcClient,
-    signer: &SuiAddress,
+    sender: &SuiAddress,
     package_address: SuiAddress,
     module_name: String,
     function: String,
     type_args: Vec<SuiTypeTag>,
-    args: Vec<SuiJsonValue>,
-) -> ChainResult<TransactionData> {
-    let package_obj_id = ObjectID::from_address(package_address.into());
-    let call = sui_client
-        .transaction_builder()
-        .move_call(
-            *signer,
-            package_obj_id,
-            &module_name,
-            &function,
-            type_args,
-            args,
-            None,
-            0,
-        )
-        .await
-        .expect("Failed to build transaction");
-    let signature = sui_client
-        .keystore
-        .sign_secure(*signer, call, Intent::sui_transaction())?;
-    let response = sui_client
-        .quorum_driver_api()
-        .execute_transaction_block(Transaction::from_data(call, vec![signature]), 
-        SuiTransactionBlockResponseOptions::full_content(), 
-        Some(ExecuteTransactionRequestType::WaitForLocalExecution),
+    args: Vec<CallArg>,
+) -> ChainResult<DevInspectResults> {
+    let type_args = type_args
+        .into_iter()
+        .map(|tag| tag.try_into().expect("Invalid type tag"))
+        .collect::<Vec<TypeTag>>();
+    let mut ptb = ProgrammableTransactionBuilder::new();
+    let move_call = ptb.move_call(
+        ObjectID::from_address(package_address.into()),
+        Identifier::new(module_name).expect("Invalid module name"),
+        Identifier::new(function).expect("Invalid function name"),
+        type_args,
+        args,
     )
-    .await
-    .expect("Failed to execute transaction");
-    response.
-    todo!()
+    .expect("Failed to build move call");
+    let tx = TransactionKind::ProgrammableTransaction(ptb.finish());
+    let inspect = sui_client
+        .read_api()
+        .dev_inspect_transaction_block(*sender, tx, None, None, None)
+        .await
+        .expect("Failed to get transaction block");
+    Ok(inspect)    
 }
