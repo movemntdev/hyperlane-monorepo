@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use hyperlane_core::{ChainCommunicationError, InterchainGasPayment, U256};
+use hyperlane_core::{ChainCommunicationError, InterchainGasPayment, H256, U256};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sui_sdk::{json::SuiJsonValue, rpc_types::SuiEvent, types::event::EventID};
@@ -9,6 +9,7 @@ use crate::convert_hex_string_to_h256;
 
 pub trait TryIntoPrimitive {
     fn try_into_bool(&self) -> Result<bool, anyhow::Error>;
+    fn try_into_h256(&self) -> Result<H256, anyhow::Error>;
 }
 
 impl TryIntoPrimitive for SuiJsonValue {
@@ -16,6 +17,13 @@ impl TryIntoPrimitive for SuiJsonValue {
         match self.to_json_value() {
             Value::Bool(b) => Ok(b),
             _ => Err(anyhow::anyhow!("Failed to convert to bool")),
+        }
+    }
+
+    fn try_into_h256(&self) -> Result<H256, anyhow::Error> {
+        match self.to_json_value() {
+            Value::String(s) => Ok(convert_hex_string_to_h256(&s)?),
+            _ => Err(anyhow::anyhow!("Failed to convert to H256")),
         }
     }
 }

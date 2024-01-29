@@ -111,4 +111,40 @@ impl Mailbox for SuiMailbox {
         let delivered_json = SuiJsonValue::from_bcs_bytes(Some(&MoveTypeLayout::Bool), &bytes).unwrap();
         Ok(delivered_json.try_into_bool().expect("Failed to convert to bool"))
     }
+
+    #[instrument(err, ret, skip(self))]
+    async fn default_ism(&self) ->ChainResult<H256> {
+        let view_response = move_view_call(
+            &self.sui_client,
+            &self.packages_address,
+            self.packages_address.clone(),
+            "mailbox".to_string(),
+            "get_default_ism".to_string(),
+            vec![],
+            vec![],
+        )
+        .await?;
+
+        let (bytes, type_tag) = view_response[0].return_values[0];
+        let ism_json = SuiJsonValue::from_bcs_bytes(Some(&MoveTypeLayout::Address), &bytes).unwrap();
+        Ok(ism_json.try_into_h256().expect("Failed to convert to H256"))
+    }
+
+    #[instrument(err, ret, skip(self))]
+    async fn recipient_ism(&self, id: H256) -> ChainResult<H256> {
+        let view_response = move_view_call(
+            &self.sui_client,
+            &self.packages_address,
+            self.packages_address.clone(),
+            "mailbox".to_string(),
+            "get_recipient_ism".to_string(),
+            vec![],
+            vec![CallArg::Pure(Vec::from(id.as_bytes()))],
+        )
+        .await?;
+
+        let (bytes, type_tag) = view_response[0].return_values[0];
+        let ism_json = SuiJsonValue::from_bcs_bytes(Some(&MoveTypeLayout::Address), &bytes).unwrap();
+        Ok(ism_json.try_into_h256().expect("Failed to convert to H256"))
+    }
 }
