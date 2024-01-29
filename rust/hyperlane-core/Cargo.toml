@@ -38,6 +38,7 @@ strum = { workspace = true, optional = true, features = ["derive"] }
 thiserror = { workspace = true }
 primitive-types = { workspace = true, optional = true }
 solana-sdk = { workspace = true, optional = true }
+sui-sdk.workspace = true
 tiny-keccak = { workspace = true, features = ["keccak"]}
 uint.workspace = true
 
