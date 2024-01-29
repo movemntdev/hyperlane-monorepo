@@ -6,12 +6,16 @@ use hyperlane_core::{
     ChainCommunicationError, ChainResult, ContractLocator, HyperlaneChain, HyperlaneContract,
     HyperlaneDomain, HyperlaneProvider, Mailbox, H256,
 };
-use sui_sdk::{json::SuiJsonValue, types::base_types::SuiAddress};
+use sui_sdk::{
+    json::{MoveTypeLayout, SuiJsonValue},
+    types::{base_types::SuiAddress, transaction::CallArg},
+};
+use tracing::instrument;
 use url::Url;
 
 use crate::{
     move_view_call, send_owned_objects_request, AddressFormatter, ConnectionConf, SuiHpProvider,
-    SuiRpcClient,
+    SuiRpcClient, TryIntoPrimitive,
 };
 
 /// A reference to a Mailbox contract on some Sui chain
@@ -100,10 +104,11 @@ impl Mailbox for SuiMailbox {
             "mailbox".to_string(),
             "delivered".to_string(),
             vec![],
-            vec![SuiJsonValue::from_str(id.to_string().as_str())
-                .expect("Failed to convert H256 to SuiJsonValue")],
+            vec![CallArg::Pure(Vec::from(id.as_bytes()))],
         )
         .await?;
-        Ok(view_response)
+        let (bytes, type_tag) = view_response[0].return_values[0];
+        let delivered_json = SuiJsonValue::from_bcs_bytes(Some(&MoveTypeLayout::Bool), &bytes).unwrap();
+        Ok(delivered_json.try_into_bool().expect("Failed to convert to bool"))
     }
 }

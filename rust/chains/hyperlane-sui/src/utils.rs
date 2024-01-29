@@ -11,7 +11,7 @@ use solana_sdk::account;
 use std::{ops::RangeInclusive, str::FromStr};
 use sui_sdk::{
     json::SuiJsonValue,
-    rpc_types::{DevInspectResults, EventFilter, SuiEvent, SuiParsedData, SuiTransactionBlockResponseOptions, SuiTypeTag},
+    rpc_types::{DevInspectResults, EventFilter, SuiEvent, SuiExecutionResult, SuiParsedData, SuiTransactionBlockResponseOptions, SuiTypeTag},
     types::{
         base_types::{MoveObjectType, ObjectID, SuiAddress}, digests::TransactionDigest, object::MoveObject, programmable_transaction_builder::ProgrammableTransactionBuilder, quorum_driver_types::ExecuteTransactionRequestType, transaction::{Argument, CallArg, Command, ProgrammableMoveCall, ProgrammableTransaction, Transaction, TransactionData, TransactionKind}, Identifier, TypeTag
     },
@@ -107,6 +107,9 @@ pub async fn send_owned_objects_request(
     }
 }
 
+/// Make a call to a move view only public function. 
+/// Internally, the ProgrammableTransactionBuilder 
+/// will validate inputs and error if invalid args ar passed. 
 pub async fn move_view_call(
     sui_client: &SuiRpcClient,
     sender: &SuiAddress,
@@ -115,7 +118,7 @@ pub async fn move_view_call(
     function: String,
     type_args: Vec<SuiTypeTag>,
     args: Vec<CallArg>,
-) -> ChainResult<DevInspectResults> {
+) -> ChainResult<Vec<SuiExecutionResult>> {
     let type_args = type_args
         .into_iter()
         .map(|tag| tag.try_into().expect("Invalid type tag"))
@@ -135,5 +138,11 @@ pub async fn move_view_call(
         .dev_inspect_transaction_block(*sender, tx, None, None, None)
         .await
         .expect("Failed to get transaction block");
-    Ok(inspect)    
+    if let Some(execution_results) = inspect.results {
+        Ok(execution_results)
+    } else {
+        return Err(ChainCommunicationError::SuiObjectReadError(
+            "No execution results found".to_string(),
+        ));
+    }
 }

@@ -3,9 +3,22 @@ use std::str::FromStr;
 use hyperlane_core::{ChainCommunicationError, InterchainGasPayment, U256};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use sui_sdk::{rpc_types::SuiEvent, types::event::EventID};
+use sui_sdk::{json::SuiJsonValue, rpc_types::SuiEvent, types::event::EventID};
 
 use crate::convert_hex_string_to_h256;
+
+pub trait TryIntoPrimitive {
+    fn try_into_bool(&self) -> Result<bool, anyhow::Error>;
+}
+
+impl TryIntoPrimitive for SuiJsonValue {
+    fn try_into_bool(&self) -> Result<bool, anyhow::Error> {
+        match self.to_json_value() {
+            Value::Bool(b) => Ok(b),
+            _ => Err(anyhow::anyhow!("Failed to convert to bool")),
+        }
+    }
+}
 
 /// Trait for event types which returns transaction_hash and block_height
 pub trait TxSpecificData {
