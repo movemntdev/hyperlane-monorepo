@@ -7,8 +7,10 @@ use hyperlane_core::{
     HyperlaneContract, HyperlaneDomain, HyperlaneMessage, HyperlaneProvider, Mailbox, TxOutcome,
     H256, U256,
 };
+use shared_crypto::intent::Intent;
 use solana_sdk::pubkey::ParsePubkeyError;
 use solana_sdk::signature::Keypair;
+use sui_keys::keystore::{AccountKeystore, Keystore};
 use sui_sdk::{
     json::{MoveTypeLayout, SuiJsonValue},
     types::{base_types::SuiAddress, transaction::CallArg},
@@ -17,8 +19,8 @@ use tracing::instrument;
 use url::Url;
 
 use crate::{
-    convert_keypair_to_sui_account, move_view_call, send_owned_objects_request, AddressFormatter,
-    ConnectionConf, SuiHpProvider, SuiRpcClient, TryIntoPrimitive,
+    convert_keypair_to_sui_account, move_mutate_call, move_view_call, send_owned_objects_request,
+    AddressFormatter, ConnectionConf, SuiHpProvider, SuiRpcClient, TryIntoPrimitive,
 };
 
 /// A reference to a Mailbox contract on some Sui chain
@@ -173,13 +175,23 @@ impl Mailbox for SuiMailbox {
             .payer
             .as_ref()
             .ok_or_else(|| ChainCommunicationError::SignerUnavailable)?;
-
-        let signer_account = convert_keypair_to_sui_account(&self.sui_client, payer)
+        let payer = convert_keypair_to_sui_account(&self.sui_client, payer)
             .await
             .expect("Failed to convert keypair to SuiAccount");
-        let recipient_module_name = self.fetch_package_name(&recipient).await.unwrap();
-        
-
+        let signature = Keystore::sign_secure(self, payer, message, Intent::sui_transaction())
+            .expect("Failed to sign message");
+        let execution_result = move_mutate_call(
+            &self.sui_client,
+            sender,
+            package_id,
+            module_name,
+            function_name,
+            type_args,
+            args,
+            gas,
+            gas_budget,
+        )
+        .await?;
         todo!()
     }
 }
