@@ -3,7 +3,7 @@ use std::str::FromStr;
 use hyperlane_core::{ChainCommunicationError, InterchainGasPayment, H256, U256};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use sui_sdk::{json::SuiJsonValue, rpc_types::SuiEvent, types::event::EventID};
+use sui_sdk::{json::SuiJsonValue, rpc_types::SuiEvent, types::{base_types::SuiAddress, event::EventID}};
 
 use crate::convert_hex_string_to_h256;
 
@@ -76,3 +76,5 @@ impl TryInto<InterchainGasPayment> for GasPaymentEventData {
         })
     }
 }
+
+

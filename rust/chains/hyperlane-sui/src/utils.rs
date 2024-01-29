@@ -7,15 +7,18 @@ use hyperlane_core::{
     ChainCommunicationError, ChainResult, InterchainGasPayment, LogMeta, H256, H512, U256,
 };
 use serde_json::Value;
-use solana_sdk::account;
+use solana_sdk::{account, signature::Keypair};
+use sui_keys::keystore::{FileBasedKeystore, AccountKeystore};
 use std::{ops::RangeInclusive, str::FromStr};
 use sui_sdk::{
-    json::SuiJsonValue,
-    rpc_types::{DevInspectResults, EventFilter, SuiEvent, SuiExecutionResult, SuiParsedData, SuiTransactionBlockResponseOptions, SuiTypeTag},
-    types::{
+    json::SuiJsonValue, rpc_types::{DevInspectResults, EventFilter, SuiEvent, SuiExecutionResult, SuiParsedData, SuiTransactionBlockResponseOptions, SuiTypeTag}, sui_client_config::{SuiClientConfig, SuiEnv}, types::crypto::SignatureScheme::ED25519, types::{
         base_types::{MoveObjectType, ObjectID, SuiAddress}, digests::TransactionDigest, object::MoveObject, programmable_transaction_builder::ProgrammableTransactionBuilder, quorum_driver_types::ExecuteTransactionRequestType, transaction::{Argument, CallArg, Command, ProgrammableMoveCall, ProgrammableTransaction, Transaction, TransactionData, TransactionKind}, Identifier, TypeTag
-    },
+    }, wallet_context::WalletContext
 };
+use sui_config::{
+    sui_config_dir, Config, PersistedConfig, SUI_CLIENT_CONFIG, SUI_KEYSTORE_FILENAME,
+};
+use tracing::info;
 
 /// Convert address string to H256
 pub fn convert_hex_string_to_h256(addr: &str) -> Result<H256, String> {
@@ -145,4 +148,57 @@ pub async fn move_view_call(
             "No execution results found".to_string(),
         ));
     }
+}
+
+pub async fn convert_keypair_to_sui_account(
+    sui_client: &SuiRpcClient,
+    payer: &Keypair,
+) -> Result<WalletContext, anyhow::Error> {
+    let wallet_conf = sui_config_dir()?.join(SUI_CLIENT_CONFIG);
+    let keystore_path = sui_config_dir()?.join(SUI_KEYSTORE_FILENAME);
+
+    // check if a wallet exists and if not, create a wallet and a sui client config
+    if !keystore_path.exists() {
+        let keystore = FileBasedKeystore::new(&keystore_path)?;
+        keystore.save()?;
+    }
+
+    if !wallet_conf.exists() {
+        let keystore = FileBasedKeystore::new(&keystore_path)?;
+        let mut client_config = SuiClientConfig::new(keystore.into());
+
+        client_config.add_env(SuiEnv::testnet());
+        client_config.add_env(SuiEnv::devnet());
+        client_config.add_env(SuiEnv::localnet());
+
+        if client_config.active_env.is_none() {
+            client_config.active_env = client_config.envs.first().map(|env| env.alias.clone());
+        }
+
+        client_config.save(&wallet_conf)?;
+        info!("Client config file is stored in {:?}.", &wallet_conf);
+    }
+
+    let mut keystore = FileBasedKeystore::new(&keystore_path)?;
+    let mut client_config: SuiClientConfig = PersistedConfig::read(&wallet_conf)?;
+
+    let default_active_address = if let Some(address) = keystore.addresses().first() {
+        *address
+    } else {
+        keystore
+            .generate_and_add_new_key(ED25519, None, None, None)?
+            .0
+    };
+
+    if keystore.addresses().len() < 2 {
+        keystore.generate_and_add_new_key(ED25519, None, None, None)?;
+    }
+
+    client_config.active_address = Some(default_active_address);
+    client_config.save(&wallet_conf)?;
+
+    let wallet =
+        WalletContext::new(&wallet_conf, Some(std::time::Duration::from_secs(60)), None).await?;
+
+    Ok(wallet)
 }

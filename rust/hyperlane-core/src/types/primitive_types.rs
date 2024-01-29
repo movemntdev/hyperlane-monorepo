@@ -10,6 +10,7 @@ use borsh::{BorshDeserialize, BorshSerialize};
 use fixed_hash::impl_fixed_hash_conversions;
 use num_traits::Zero;
 use uint::construct_uint;
+use sui_sdk::types::base_types::SuiAddress;
 
 use crate::{types::serialize, ChainCommunicationError};
 

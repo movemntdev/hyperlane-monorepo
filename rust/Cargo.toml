@@ -161,6 +161,8 @@ static_assertions = "1.1"
 strum = "0.25.0"
 strum_macros = "0.25.2"
 sui-sdk = { git = "https://github.com/mystenlabs/sui", package = "sui-sdk" }
+sui-config = { git = "https://github.com/mystenlabs/sui", package = "sui-config" }
+sui-keys = { git = "https://github.com/mystenlabs/sui", package = "sui-keys" }
 tempfile = "3.3"
 tendermint = "0.32.2"
 tendermint-rpc = { version = "0.32.0", features = ["http-client", "tokio"] }
