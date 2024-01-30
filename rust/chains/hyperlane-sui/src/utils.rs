@@ -1,5 +1,6 @@
 use crate::{
-    AddressFormatter, GasPaymentEventData, HyperlaneSuiError, SuiRpcClient, TxSpecificData,
+    AddressFormatter, ExecuteMode, GasPaymentEventData, HyperlaneSuiError, SuiRpcClient,
+    TxSpecificData,
 };
 use anyhow::{Chain, Error};
 use fastcrypto::encoding::Encoding;
@@ -18,8 +19,7 @@ use sui_keys::keystore::{AccountKeystore, FileBasedKeystore, Keystore};
 use sui_sdk::{
     json::SuiJsonValue,
     rpc_types::{
-        DevInspectResults, EventFilter, SuiEvent, SuiExecutionResult, SuiParsedData,
-        SuiTransactionBlockResponse, SuiTransactionBlockResponseOptions, SuiTypeTag,
+        DevInspectResults, EventFilter, SuiEvent, SuiExecutionResult, SuiParsedData, SuiTransactionBlockEffectsAPI, SuiTransactionBlockResponse, SuiTransactionBlockResponseOptions, SuiTypeTag
     },
     sui_client_config::{SuiClientConfig, SuiEnv},
     types::crypto::DefaultHash,
@@ -39,6 +39,8 @@ use sui_sdk::{
     wallet_context::WalletContext,
 };
 use tracing::info;
+
+pub const GAS_UNIT_PRICE: u64 = 100; //check this is correct
 
 /// Convert address string to H256
 pub fn convert_hex_string_to_h256(addr: &str) -> Result<H256, String> {
@@ -183,6 +185,7 @@ pub async fn move_mutate_call(
     function_name: String,
     type_args: Vec<SuiTypeTag>,
     args: Vec<SuiJsonValue>,
+    execute: ExecuteMode,
 ) -> ChainResult<SuiTransactionBlockResponse> {
     let signer_account = payer_keystore.addresses()[0];
     let call = sui_client
@@ -202,15 +205,24 @@ pub async fn move_mutate_call(
     let signature = payer_keystore
         .sign_secure(&signer_account, &call, Intent::sui_transaction())
         .expect("Failed to sign message");
-    let response = sui_client
-        .quorum_driver_api()
-        .execute_transaction_block(
-            Transaction::from_data(call, vec![signature]),
-            SuiTransactionBlockResponseOptions::full_content(),
-            Some(ExecuteTransactionRequestType::WaitForLocalExecution),
-        )
-        .await
-        .map_err(ChainCommunicationError::from_other)?;
+    let response: SuiTransactionBlockResponse = match execute {
+        ExecuteMode::LiveNetwork => sui_client
+            .quorum_driver_api()
+            .execute_transaction_block(
+                Transaction::from_data(call, vec![signature]),
+                SuiTransactionBlockResponseOptions::full_content(),
+                Some(ExecuteTransactionRequestType::WaitForLocalExecution),
+            )
+            .await
+            .unwrap(),
+        ExecuteMode::Simulate => sui_client
+            .read_api()
+            .dry_run_transaction_block(call)
+            .await
+            .unwrap()
+            .into(),
+    };
+
     match response.confirmed_local_execution {
         Some(true) => Ok(response),
         _ => Err(ChainCommunicationError::SuiObjectReadError(
@@ -267,4 +279,9 @@ pub async fn convert_keypair_to_sui_keystore(
     client_config.save(&wallet_conf)?;
 
     Ok(keystore)
+}
+
+pub fn total_gas(response: SuiTransactionBlockResponse) -> u64 {
+    let gas_summary = response.effects.unwrap().gas_cost_summary();
+    gas_summary.computation_cost + gas_summary.storage_cost + gas_summary.non_refundable_storage_fee
 }

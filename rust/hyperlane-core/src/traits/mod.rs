@@ -44,7 +44,7 @@ pub struct TxOutcome {
     /// Amount of gas used on this transaction.
     pub gas_used: crate::U256,
     /// Price paid for the gas
-    pub gas_price: FixedPointNumber,
+    pub gas_price: crate::U256,
     // TODO: more? What can be abstracted across all chains?
 }
 

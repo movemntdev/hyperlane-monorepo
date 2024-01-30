@@ -5,12 +5,16 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sui_sdk::{
     json::SuiJsonValue,
-    rpc_types::SuiEvent,
-    types::{base_types::SuiAddress, event::EventID},
+    rpc_types::{DryRunTransactionBlockResponse, SuiEvent, SuiTransactionBlockResponse},
+    types::{base_types::SuiAddress, digests::TransactionDigest, event::EventID},
 };
 
 use crate::convert_hex_string_to_h256;
 
+pub enum ExecuteMode {
+    LiveNetwork,
+    Simulate,
+}
 pub trait TryIntoPrimitive {
     fn try_into_bool(&self) -> Result<bool, anyhow::Error>;
     fn try_into_h256(&self) -> Result<H256, anyhow::Error>;
@@ -34,6 +38,30 @@ impl TryIntoPrimitive for SuiJsonValue {
         }
     }
 }
+
+pub trait ConvertFromDryRun {
+    fn convert_from(dry_run_response: DryRunTransactionBlockResponse) -> Self;
+}
+
+impl ConvertFromDryRun for SuiTransactionBlockResponse {
+    fn convert_from(dry_run_response: DryRunTransactionBlockResponse) -> Self {
+        SuiTransactionBlockResponse {
+            digest: TransactionDigest::default(),
+            transaction: None, 
+            raw_transaction: Vec::new(), 
+            effects: Some(dry_run_response.effects),
+            events: Some(dry_run_response.events),
+            object_changes: Some(dry_run_response.object_changes),
+            balance_changes: Some(dry_run_response.balance_changes),
+            timestamp_ms: None, 
+            confirmed_local_execution: None, 
+            checkpoint: None, 
+            errors: Vec::new(), 
+            raw_effects: Vec::new(), 
+        }
+    }
+}
+
 
 /// Trait for event types which returns transaction_hash and block_height
 pub trait TxSpecificData {

@@ -3,9 +3,7 @@ use std::{num::NonZeroU64, str::FromStr};
 use async_trait::async_trait;
 use base64::write;
 use hyperlane_core::{
-    ChainCommunicationError, ChainResult, ContractLocator, Encode, HyperlaneChain,
-    HyperlaneContract, HyperlaneDomain, HyperlaneMessage, HyperlaneProvider, Mailbox, TxOutcome,
-    H256, U256,
+    ChainCommunicationError, ChainResult, ContractLocator, Encode, HyperlaneChain, HyperlaneContract, HyperlaneDomain, HyperlaneMessage, HyperlaneProvider, Mailbox, TxCostEstimate, TxOutcome, H256, H512, U256
 };
 use shared_crypto::intent::Intent;
 use solana_sdk::pubkey::ParsePubkeyError;
@@ -13,14 +11,14 @@ use solana_sdk::signature::Keypair;
 use sui_keys::keystore::{AccountKeystore, Keystore};
 use sui_sdk::{
     json::{MoveTypeLayout, SuiJsonValue},
-    types::{base_types::SuiAddress, transaction::CallArg},
+    rpc_types::SuiTransactionBlockEffectsAPI,
+    types::{base_types::SuiAddress, execution, transaction::CallArg},
 };
 use tracing::instrument;
 use url::Url;
 
 use crate::{
-    convert_keypair_to_sui_keystore, move_mutate_call, move_view_call, send_owned_objects_request,
-    AddressFormatter, ConnectionConf, SuiHpProvider, SuiRpcClient, TryIntoPrimitive,
+    convert_hex_string_to_h256, convert_keypair_to_sui_keystore, move_mutate_call, move_view_call, send_owned_objects_request, total_gas, AddressFormatter, ConnectionConf, ExecuteMode, SuiHpProvider, SuiRpcClient, TryIntoPrimitive, GAS_UNIT_PRICE
 };
 
 /// A reference to a Mailbox contract on some Sui chain
@@ -188,22 +186,22 @@ impl Mailbox for SuiMailbox {
         let payer_keystore = convert_keypair_to_sui_keystore(&self.sui_client, payer_keypair)
             .await
             .expect("Failed to convert keypair to SuiAccount");
-        let package_name = self
+        let recipient_module_name = self
             .fetch_package_name(&recipient)
             .await
             .expect("Failed to fetch package name");
 
-        let execution_result = move_mutate_call(
+        let response = move_mutate_call(
             &self.sui_client,
             payer_keystore,
             object.data.unwrap().object_id, //check this not sure if this ID correlates to the module ID we want
-            bcs::from_bytes(&package_name).unwrap(),
+            bcs::from_bytes(&recipient_module_name).unwrap(),
             "handle_message".to_string(),
             vec![],
             vec![
                 SuiJsonValue::from_bcs_bytes(
                     Some(&MoveTypeLayout::U8),
-                    &bcs::to_bytes(&encoded_message).unwrap(),
+                    &bcs::to_bytes(&recipient_module_name).unwrap(),
                 )
                 .expect("Failed to convert message to SuiJsonValue"),
                 SuiJsonValue::from_bcs_bytes(
@@ -212,8 +210,75 @@ impl Mailbox for SuiMailbox {
                 )
                 .expect("Failed to convert metadata to SuiJsonValue"),
             ],
+            ExecuteMode::RealState,
         )
         .await?;
+        let tx_hash =
+            convert_hex_string_to_h256(&response.digest.to_string())
+                .unwrap();
+        let has_success = response.confirmed_local_execution.unwrap();
+        Ok(TxOutcome {
+            transaction_id: H512::from(tx_hash),
+            executed: has_success,
+            gas_price: U256::from(GAS_UNIT_PRICE),
+            gas_used: U256::from(total_gas(response)),
+        })
+    }
+
+    #[instrument(err, ret, skip(self))]
+    async fn process_estimate_costs(
+        &self,
+        message: &HyperlaneMessage,
+        metadata: &[u8],
+    ) -> ChainResult<TxCostEstimate> {
+        let recipient = SuiAddress::from_bytes(message.recipient.0).unwrap();
+        let object = self
+            .sui_client
+            .read_api()
+            .get_owned_objects(recipient, None, None, None)
+            .await
+            .expect("Failed to get owned objects")
+            .data
+            .first()
+            .expect("Failed to get owned objects");
+
+        let mut encoded_message = vec![];
+        message_write_to(&mut encoded_message).unwrap();
+
+        let payer_keypair = self
+            .payer
+            .as_ref()
+            .ok_or_else(|| ChainCommunicationError::SignerUnavailable)?;
+        let payer_keystore = convert_keypair_to_sui_keystore(&self.sui_client, payer_keypair)
+            .await
+            .expect("Failed to convert keypair to SuiAccount");
+        let recipient_module_name = self
+            .fetch_package_name(&recipient)
+            .await
+            .expect("Failed to fetch package name");
+        let execution_result = move_mutate_call(
+            &self.sui_client,
+            payer_keystore,
+            object.data.unwrap().object_id, //check this not sure if this ID correlates to the module ID we want
+            bcs::from_bytes(&recipient_module_name).unwrap(),
+            "handle_message".to_string(),
+            vec![],
+            vec![
+                SuiJsonValue::from_bcs_bytes(
+                    Some(&MoveTypeLayout::U8),
+                    &bcs::to_bytes(&recipient_module_name).unwrap(),
+                )
+                .expect("Failed to convert message to SuiJsonValue"),
+                SuiJsonValue::from_bcs_bytes(
+                    Some(&MoveTypeLayout::Vector(Box::new(MoveTypeLayout::U8))),
+                    &bcs::to_bytes(&metadata.to_vec()).unwrap(),
+                )
+                .expect("Failed to convert metadata to SuiJsonValue"),
+            ],
+            ExecuteMode::Simulate,
+        )
+        .await
+        .expect("Failed to execute transaction");
         todo!()
     }
 }
