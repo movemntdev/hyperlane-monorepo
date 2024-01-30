@@ -2,23 +2,40 @@ use crate::{
     AddressFormatter, GasPaymentEventData, HyperlaneSuiError, SuiRpcClient, TxSpecificData,
 };
 use anyhow::{Chain, Error};
-use shared_crypto::intent::{Intent, IntentMessage};
+use fastcrypto::encoding::Encoding;
+use fastcrypto::hash::HashFunction;
 use hyperlane_core::{
     ChainCommunicationError, ChainResult, InterchainGasPayment, LogMeta, H256, H512, U256,
 };
-use fastcrypto::{encoding::Encoding};
-use fastcrypto::hash::HashFunction;
 use serde_json::Value;
+use shared_crypto::intent::{Intent, IntentMessage};
 use solana_sdk::{account, signature::Keypair};
-use sui_keys::keystore::{FileBasedKeystore, AccountKeystore};
 use std::{ops::RangeInclusive, str::FromStr};
-use sui_sdk::{
-    json::SuiJsonValue, rpc_types::{DevInspectResults, EventFilter, SuiEvent, SuiExecutionResult, SuiParsedData, SuiTransactionBlockResponseOptions, SuiTypeTag}, sui_client_config::{SuiClientConfig, SuiEnv}, types::crypto::SignatureScheme::ED25519, types::{
-        base_types::{MoveObjectType, ObjectID, SuiAddress}, digests::TransactionDigest, object::MoveObject, programmable_transaction_builder::ProgrammableTransactionBuilder, quorum_driver_types::ExecuteTransactionRequestType, transaction::{Argument, CallArg, Command, ProgrammableMoveCall, ProgrammableTransaction, Transaction, TransactionData, TransactionKind}, Identifier, TypeTag
-    }, wallet_context::WalletContext, types::crypto::{DefaultHash},
-};
 use sui_config::{
     sui_config_dir, Config, PersistedConfig, SUI_CLIENT_CONFIG, SUI_KEYSTORE_FILENAME,
+};
+use sui_keys::keystore::{AccountKeystore, FileBasedKeystore, Keystore};
+use sui_sdk::{
+    json::SuiJsonValue,
+    rpc_types::{
+        DevInspectResults, EventFilter, SuiEvent, SuiExecutionResult, SuiParsedData, SuiTransactionBlockResponse, SuiTransactionBlockResponseOptions, SuiTypeTag
+    },
+    sui_client_config::{SuiClientConfig, SuiEnv},
+    types::crypto::DefaultHash,
+    types::crypto::SignatureScheme::ED25519,
+    types::{
+        base_types::{MoveObjectType, ObjectID, SuiAddress},
+        digests::TransactionDigest,
+        object::MoveObject,
+        programmable_transaction_builder::ProgrammableTransactionBuilder,
+        quorum_driver_types::ExecuteTransactionRequestType,
+        transaction::{
+            Argument, CallArg, Command, ProgrammableMoveCall, ProgrammableTransaction, Transaction,
+            TransactionData, TransactionKind,
+        },
+        Identifier, TypeTag,
+    },
+    wallet_context::WalletContext,
 };
 use tracing::info;
 
@@ -112,13 +129,13 @@ pub async fn send_owned_objects_request(
     }
 }
 
-/// TODO, these move calls can be made into one function with 
-/// a single struct for params and some Option Fields, 
+/// TODO, these move calls can be made into one function with
+/// a single struct for params and some Option Fields,
 /// then we can match on som value to dispatch to mutable or immutable call
 
-/// Make a call to a move view only public function. 
-/// Internally, the ProgrammableTransactionBuilder 
-/// will validate inputs and error if invalid args ar passed. 
+/// Make a call to a move view only public function.
+/// Internally, the ProgrammableTransactionBuilder
+/// will validate inputs and error if invalid args ar passed.
 pub async fn move_view_call(
     sui_client: &SuiRpcClient,
     sender: &SuiAddress,
@@ -133,14 +150,15 @@ pub async fn move_view_call(
         .map(|tag| tag.try_into().expect("Invalid type tag"))
         .collect::<Vec<TypeTag>>();
     let mut ptb = ProgrammableTransactionBuilder::new();
-    let move_call = ptb.move_call(
-        ObjectID::from_address(package_address.into()),
-        Identifier::new(module_name).expect("Invalid module name"),
-        Identifier::new(function).expect("Invalid function name"),
-        type_args,
-        args,
-    )
-    .expect("Failed to build move call");
+    let move_call = ptb
+        .move_call(
+            ObjectID::from_address(package_address.into()),
+            Identifier::new(module_name).expect("Invalid module name"),
+            Identifier::new(function).expect("Invalid function name"),
+            type_args,
+            args,
+        )
+        .expect("Failed to build move call");
     let tx = TransactionKind::ProgrammableTransaction(ptb.finish());
     let inspect = sui_client
         .read_api()
@@ -158,20 +176,21 @@ pub async fn move_view_call(
 
 pub async fn move_mutate_call(
     sui_client: &SuiRpcClient,
-    sender: &SuiAddress,
+    payer_keystore: FileBasedKeystore,
     package_id: ObjectID,
-    module_name: String, 
+    module_name: String,
     function_name: String,
     type_args: Vec<SuiTypeTag>,
     args: Vec<SuiJsonValue>,
     gas: ObjectID,
     gas_budget: u64,
-) -> ChainResult<Vec<SuiExecutionResult>> {
+) -> ChainResult<SuiTransactionBlockResponse> {
+    let signer_account = payer_keystore.addresses()[0];
     let call = sui_client
         .transaction_builder()
         .move_call(
-            *sender,
-            package_id, 
+            signer_account,
+            package_id,
             &module_name,
             &function_name,
             type_args,
@@ -181,16 +200,30 @@ pub async fn move_mutate_call(
         )
         .await
         .expect("Failed to build move call");
-     
-        
-    todo!()
-    
+    let signature = payer_keystore
+        .sign_secure(&signer_account, &call, Intent::sui_transaction())
+        .expect("Failed to sign message");
+    let response = sui_client
+        .quorum_driver_api()
+        .execute_transaction_block(
+            Transaction::from_data(call, vec![signature]),
+            SuiTransactionBlockResponseOptions::full_content(),
+            Some(ExecuteTransactionRequestType::WaitForLocalExecution),
+        )
+        .await
+        .map_err(ChainCommunicationError::from_other)?;
+        match response.confirmed_local_execution {
+            Some(true) => Ok(response),
+            _ => Err(ChainCommunicationError::SuiObjectReadError(
+                "Failed to execute transaction".to_string(),
+            )),
+        }
 }
 
-pub async fn convert_keypair_to_sui_account(
+pub async fn convert_keypair_to_sui_keystore(
     sui_client: &SuiRpcClient,
     payer: &Keypair,
-) -> Result<WalletContext, anyhow::Error> {
+) -> Result<FileBasedKeystore, anyhow::Error> {
     let wallet_conf = sui_config_dir()?.join(SUI_CLIENT_CONFIG);
     let keystore_path = sui_config_dir()?.join(SUI_KEYSTORE_FILENAME);
 
@@ -234,8 +267,5 @@ pub async fn convert_keypair_to_sui_account(
     client_config.active_address = Some(default_active_address);
     client_config.save(&wallet_conf)?;
 
-    let wallet =
-        WalletContext::new(&wallet_conf, Some(std::time::Duration::from_secs(60)), None).await?;
-
-    Ok(wallet)
+    Ok(keystore)
 }

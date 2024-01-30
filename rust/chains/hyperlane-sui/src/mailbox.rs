@@ -19,8 +19,7 @@ use tracing::instrument;
 use url::Url;
 
 use crate::{
-    convert_keypair_to_sui_account, move_mutate_call, move_view_call, send_owned_objects_request,
-    AddressFormatter, ConnectionConf, SuiHpProvider, SuiRpcClient, TryIntoPrimitive,
+    convert_keypair_to_sui_account, convert_keypair_to_sui_keystore, move_mutate_call, move_view_call, send_owned_objects_request, AddressFormatter, ConnectionConf, SuiHpProvider, SuiRpcClient, TryIntoPrimitive
 };
 
 /// A reference to a Mailbox contract on some Sui chain
@@ -171,18 +170,17 @@ impl Mailbox for SuiMailbox {
         let mut encoded_message = vec![];
         message.write_to(&mut encoded_message).unwrap();
 
-        let payer = self
+        let payer_keypair = self
             .payer
             .as_ref()
             .ok_or_else(|| ChainCommunicationError::SignerUnavailable)?;
-        let payer = convert_keypair_to_sui_account(&self.sui_client, payer)
+        let payer_keystore = convert_keypair_to_sui_keystore(&self.sui_client, payer_keypair)
             .await
             .expect("Failed to convert keypair to SuiAccount");
-        let signature = Keystore::sign_secure(self, payer, message, Intent::sui_transaction())
-            .expect("Failed to sign message");
+       
         let execution_result = move_mutate_call(
             &self.sui_client,
-            sender,
+            payer_keystore,
             package_id,
             module_name,
             function_name,
