@@ -19,7 +19,8 @@ use tracing::instrument;
 use url::Url;
 
 use crate::{
-    convert_keypair_to_sui_account, convert_keypair_to_sui_keystore, move_mutate_call, move_view_call, send_owned_objects_request, AddressFormatter, ConnectionConf, SuiHpProvider, SuiRpcClient, TryIntoPrimitive
+    convert_keypair_to_sui_keystore, move_mutate_call, move_view_call, send_owned_objects_request,
+    AddressFormatter, ConnectionConf, SuiHpProvider, SuiRpcClient, TryIntoPrimitive,
 };
 
 /// A reference to a Mailbox contract on some Sui chain
@@ -167,6 +168,16 @@ impl Mailbox for SuiMailbox {
         _tx_gas_limit: Option<U256>,
     ) -> ChainResult<TxOutcome> {
         let recipient = SuiAddress::from_bytes(message.recipient.0).unwrap();
+        let object = self
+            .sui_client
+            .read_api()
+            .get_owned_objects(recipient, None, None, None)
+            .await
+            .expect("Failed to get owned objects")
+            .data
+            .first()
+            .expect("Failed to get owned objects");
+
         let mut encoded_message = vec![];
         message.write_to(&mut encoded_message).unwrap();
 
@@ -177,17 +188,30 @@ impl Mailbox for SuiMailbox {
         let payer_keystore = convert_keypair_to_sui_keystore(&self.sui_client, payer_keypair)
             .await
             .expect("Failed to convert keypair to SuiAccount");
-       
+        let package_name = self
+            .fetch_package_name(&recipient)
+            .await
+            .expect("Failed to fetch package name");
+
         let execution_result = move_mutate_call(
             &self.sui_client,
             payer_keystore,
-            package_id,
-            module_name,
-            function_name,
-            type_args,
-            args,
-            gas,
-            gas_budget,
+            object.data.unwrap().object_id, //check this not sure if this ID correlates to the module ID we want
+            bcs::from_bytes(&package_name).unwrap(),
+            "handle_message".to_string(),
+            vec![],
+            vec![
+                SuiJsonValue::from_bcs_bytes(
+                    Some(&MoveTypeLayout::U8),
+                    &bcs::to_bytes(&encoded_message).unwrap(),
+                )
+                .expect("Failed to convert message to SuiJsonValue"),
+                SuiJsonValue::from_bcs_bytes(
+                    Some(&MoveTypeLayout::Vector(Box::new(MoveTypeLayout::U8))),
+                    &bcs::to_bytes(&metadata.to_vec()).unwrap(),
+                )
+                .expect("Failed to convert metadata to SuiJsonValue"),
+            ],
         )
         .await?;
         todo!()

@@ -18,7 +18,8 @@ use sui_keys::keystore::{AccountKeystore, FileBasedKeystore, Keystore};
 use sui_sdk::{
     json::SuiJsonValue,
     rpc_types::{
-        DevInspectResults, EventFilter, SuiEvent, SuiExecutionResult, SuiParsedData, SuiTransactionBlockResponse, SuiTransactionBlockResponseOptions, SuiTypeTag
+        DevInspectResults, EventFilter, SuiEvent, SuiExecutionResult, SuiParsedData,
+        SuiTransactionBlockResponse, SuiTransactionBlockResponseOptions, SuiTypeTag,
     },
     sui_client_config::{SuiClientConfig, SuiEnv},
     types::crypto::DefaultHash,
@@ -182,8 +183,6 @@ pub async fn move_mutate_call(
     function_name: String,
     type_args: Vec<SuiTypeTag>,
     args: Vec<SuiJsonValue>,
-    gas: ObjectID,
-    gas_budget: u64,
 ) -> ChainResult<SuiTransactionBlockResponse> {
     let signer_account = payer_keystore.addresses()[0];
     let call = sui_client
@@ -195,8 +194,8 @@ pub async fn move_mutate_call(
             &function_name,
             type_args,
             args,
-            Some(gas),
-            gas_budget,
+            None, // The node will pick a gas object belonging to the singer if none is provided.
+            1000,
         )
         .await
         .expect("Failed to build move call");
@@ -212,12 +211,12 @@ pub async fn move_mutate_call(
         )
         .await
         .map_err(ChainCommunicationError::from_other)?;
-        match response.confirmed_local_execution {
-            Some(true) => Ok(response),
-            _ => Err(ChainCommunicationError::SuiObjectReadError(
-                "Failed to execute transaction".to_string(),
-            )),
-        }
+    match response.confirmed_local_execution {
+        Some(true) => Ok(response),
+        _ => Err(ChainCommunicationError::SuiObjectReadError(
+            "Failed to execute transaction".to_string(),
+        )),
+    }
 }
 
 pub async fn convert_keypair_to_sui_keystore(
