@@ -1,9 +1,11 @@
-use std::{num::NonZeroU64, str::FromStr};
+use std::{num::NonZeroU64, ops::RangeInclusive, str::FromStr};
 
 use async_trait::async_trait;
 use base64::write;
 use hyperlane_core::{
-    ChainCommunicationError, ChainResult, ContractLocator, Encode, HyperlaneChain, HyperlaneContract, HyperlaneDomain, HyperlaneMessage, HyperlaneProvider, Mailbox, TxCostEstimate, TxOutcome, H256, H512, U256
+    ChainCommunicationError, ChainResult, ContractLocator, Encode, HyperlaneChain,
+    HyperlaneContract, HyperlaneDomain, HyperlaneMessage, HyperlaneProvider, Indexer, Mailbox,
+    TxCostEstimate, TxOutcome, H256, H512, U256,
 };
 use shared_crypto::intent::Intent;
 use solana_sdk::pubkey::ParsePubkeyError;
@@ -14,11 +16,13 @@ use sui_sdk::{
     rpc_types::SuiTransactionBlockEffectsAPI,
     types::{base_types::SuiAddress, execution, transaction::CallArg},
 };
-use tracing::instrument;
+use tracing::{info, instrument};
 use url::Url;
 
 use crate::{
-    convert_hex_string_to_h256, convert_keypair_to_sui_keystore, move_mutate_call, move_view_call, send_owned_objects_request, total_gas, AddressFormatter, ConnectionConf, ExecuteMode, SuiHpProvider, SuiRpcClient, TryIntoPrimitive, GAS_UNIT_PRICE
+    convert_hex_string_to_h256, convert_keypair_to_sui_keystore, move_mutate_call, move_view_call,
+    send_owned_objects_request, total_gas, AddressFormatter, ConnectionConf, ExecuteMode,
+    SuiHpProvider, SuiRpcClient, TryIntoPrimitive, GAS_UNIT_PRICE,
 };
 
 /// A reference to a Mailbox contract on some Sui chain
@@ -213,9 +217,7 @@ impl Mailbox for SuiMailbox {
             ExecuteMode::RealState,
         )
         .await?;
-        let tx_hash =
-            convert_hex_string_to_h256(&response.digest.to_string())
-                .unwrap();
+        let tx_hash = convert_hex_string_to_h256(&response.digest.to_string()).unwrap();
         let has_success = response.confirmed_local_execution.unwrap();
         Ok(TxOutcome {
             transaction_id: H512::from(tx_hash),
@@ -256,7 +258,7 @@ impl Mailbox for SuiMailbox {
             .fetch_package_name(&recipient)
             .await
             .expect("Failed to fetch package name");
-        let execution_result = move_mutate_call(
+        let response = move_mutate_call(
             &self.sui_client,
             payer_keystore,
             object.data.unwrap().object_id, //check this not sure if this ID correlates to the module ID we want
@@ -279,6 +281,125 @@ impl Mailbox for SuiMailbox {
         )
         .await
         .expect("Failed to execute transaction");
+        Ok(TxCostEstimate {
+            gas_limit: U256::from(total_gas(response)),
+            gas_price: U256::from(GAS_UNIT_PRICE),
+            l2_gas_limit: None,
+        })
+    }
+
+    #[instrument(err, ret, skip(self))]
+    fn process_calldata(&self, _message: &HyperlaneMessage, _metadata: &[u8]) -> Vec<u8> {
         todo!()
+    }
+}
+
+/// Struct that retrieves event data for a Sui Mailbox contract.
+#[derive(Debug)]
+pub struct SuiMailboxIndexer {
+    mailbox: SuiMailbox,
+    sui_client: SuiRpcClient,
+    package_address: SuiAddress,
+}
+
+impl SuiMailboxIndexer {
+    pub fn new(conf: &ConnectionConf, locator: ContractLocator) -> ChainResult<Self> {
+        let sui_client = tokio::runtime::Runtime::new()
+            .expect("Failed to create runtime")
+            .block_on(async { SuiRpcClient::new(conf.url.to_string()).await })
+            .expect("Failed to create SuiRpcClient");
+        let package_address = SuiAddress::from_bytes(<[u8; 32]>::from(locator.address)).unwrap();
+        let mailbox = SuiMailbox::new(conf, locator, None)?;
+
+        Ok(Self {
+            mailbox,
+            sui_client,
+            package_address,
+        })
+    }
+
+    async fn get_finalized_block_number(&self) -> ChainResult<u32> {
+        let chain_state = self
+            .sui_client
+            .read_api()
+            .get_latest_checkpoint_sequence_number()
+            .await
+            .map_err(ChainCommunicationError::from_other)
+            .unwrap()
+            .into_inner();
+        Ok(chain_state)
+    }
+}
+
+#[async_trait]
+impl SequenceIndexer<HyperlaneMessage> for SuiMailboxIndexer {
+    #[instrument(err, skip(self))]
+    async fn sequence_and_tip(&self) -> ChainResult<(Option<u32>, u32)> {
+        let tip = Indexer::<HyperlaneMessage>::get_finalized_block_number(self as _).await?;
+        let count = Mailbox::count(&self.mailbox, None).await?;
+        Ok((Some(count), tip))
+    }
+}
+
+#[async_trait]
+impl Indexer<HyperlaneMessage> for SuiMailboxIndexer {
+    async fn fetch_logs(
+        &self,
+        range: RangeInclusive<u32>,
+    ) -> ChainResult<Vec<(HyperlabeMessage, LogMeta)>> {
+        get_filtered_events::<HyperlaneMessage, DispatchEventData>(
+            &self.sui_client,
+            self.package_address,
+            &format!(
+                "{}::mailbox::MailBoxState",
+                self.package_address.to_hex_literal()
+            ),
+            "dispatch_events".to_string(),
+            range,
+        )
+        .await
+    }
+
+    async fn get_finalized_block_number(&self) -> ChainResult<u32> {
+        self.get_finalized_block_number().await
+    }
+}
+
+#[async_trait]
+impl Indexer<H256> for SuiMailboxIndexer {
+    async fn fetch_logs(&self, range: RangeInclusive<u32>) -> ChainResult<Vec<(H256, LogMeta)>> {
+        get_filtered_events::<H256, MsgProcessEventData>(
+            &self.sui_client,
+            self.package_address,
+            &format!(
+                "{}::mailbox::MailBoxState",
+                self.package_address.to_hex_literal()
+            ),
+            "process_events",
+            range,
+        )
+        .await
+    }
+
+    async fn get_finalized_block_number(&self) -> ChainResult<u32> {
+        self.get_finalized_block_number().await
+    }
+}
+
+#[async_trait]
+impl SequenceIndexer<H256> for SuiMailboxIndexer {
+    async fn sequence_and_tip(&self) -> ChainResult<(Option<u32>, u32)> {
+        info!("Message deliver indexing not implemented for Sui");
+        let tip = Indexer::<H256>::get_finalized_block_number(self as _).await?;
+        Ok((Some(1), tip))
+    }
+}
+
+// TODO Don't support it for Sui
+impl HyperlaneAbi for SuiMailboxIndexer {
+    const SELECTOR_SIZE_BYTES: usize = 8;
+
+    fn fn_map() -> HashMap<Vec<u8>, &'static str> {
+        unimplemented!()
     }
 }
