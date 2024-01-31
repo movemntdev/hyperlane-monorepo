@@ -1,12 +1,22 @@
-use std::str::FromStr;
+use std::{ops::RangeInclusive, str::FromStr};
 
-use hyperlane_core::{ChainCommunicationError, Decode, HyperlaneMessage, InterchainGasPayment, H256, U256};
+use hyperlane_core::{
+    ChainCommunicationError, Decode, HyperlaneMessage, InterchainGasPayment, H256, U256,
+};
+use move_core_types::language_storage::StructTag;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sui_sdk::{
     json::SuiJsonValue,
-    rpc_types::{DryRunTransactionBlockResponse, SuiEvent, SuiTransactionBlockResponse},
-    types::{base_types::{ObjectID, SuiAddress}, digests::TransactionDigest, event::{Event, EventID}, Identifier},
+    rpc_types::{
+        DryRunTransactionBlockResponse, EventFilter, SuiEvent, SuiTransactionBlockResponse,
+    },
+    types::{
+        base_types::{ObjectID, SuiAddress},
+        digests::TransactionDigest,
+        event::{Event, EventEnvelope, EventID},
+        Identifier,
+    },
 };
 
 use crate::convert_hex_string_to_h256;
@@ -19,7 +29,7 @@ pub enum ExecuteMode {
 #[derive(Debug)]
 pub struct SuiModule {
     pub package: ObjectID,
-    pub module: Identifier
+    pub module: Identifier,
 }
 
 pub trait TryIntoPrimitive {
@@ -54,28 +64,27 @@ impl ConvertFromDryRun for SuiTransactionBlockResponse {
     fn convert_from(dry_run_response: DryRunTransactionBlockResponse) -> Self {
         SuiTransactionBlockResponse {
             digest: TransactionDigest::default(),
-            transaction: None, 
-            raw_transaction: Vec::new(), 
+            transaction: None,
+            raw_transaction: Vec::new(),
             effects: Some(dry_run_response.effects),
             events: Some(dry_run_response.events),
             object_changes: Some(dry_run_response.object_changes),
             balance_changes: Some(dry_run_response.balance_changes),
-            timestamp_ms: None, 
-            confirmed_local_execution: None, 
-            checkpoint: None, 
-            errors: Vec::new(), 
-            raw_effects: Vec::new(), 
+            timestamp_ms: None,
+            confirmed_local_execution: None,
+            checkpoint: None,
+            errors: Vec::new(),
+            raw_effects: Vec::new(),
         }
     }
 }
 
-
 /// Trait for event types which returns transaction_hash and block_height
 pub trait TxSpecificData {
-    /// returns block_height
-    fn block_height(&self) -> String;
-    /// returns transaction_hash
-    fn transaction_hash(&self) -> String;
+    /// returns the checkopoint number. Blockheight does not exist in Sui.
+    fn checkpoint(&self) -> String;
+    /// returns transaction digest
+    fn tx_digest(&self) -> String;
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -95,27 +104,33 @@ pub struct GasPaymentEventData {
     pub event_id: EventID,
 }
 
-impl TryFrom<Value> for GasPaymentEventData {
+impl TryFrom<SuiEvent> for GasPaymentEventData {
     type Error = ChainCommunicationError;
-    fn try_from(event: serde_json::Value) -> Result<Self, Self::Error> {
-        serde_json::from_str::<Self>(&event.to_string())
+    fn try_from(event: SuiEvent) -> Result<Self, Self::Error> {
+        let contents = bcs::from_bytes::<GasPaymentEventData>(&event.bcs)
             .map_err(ChainCommunicationError::from_other)
+            .unwrap();
+        Ok(contents)
     }
 }
 
-impl TryInto<InterchainGasPayment> for GasPaymentEventData {
-    type Error = ChainCommunicationError;
-    fn try_into(self) -> Result<InterchainGasPayment, Self::Error> {
-        Ok(InterchainGasPayment {
-            destination: self.dest_domain.parse::<u32>().unwrap(),
-            message_id: convert_hex_string_to_h256(&self.message_id).unwrap(),
-            payment: U256::from_str(&self.required_amount)
-                .map_err(ChainCommunicationError::from_other)
-                .unwrap(),
-            gas_amount: U256::from_str(&self.gas_amount)
-                .map_err(ChainCommunicationError::from_other)
-                .unwrap(),
-        })
+impl From<GasPaymentEventData> for InterchainGasPayment {
+    fn from(event_data: GasPaymentEventData) -> Self {
+        InterchainGasPayment {
+            destination: event_data.dest_domain.parse::<u32>().unwrap(),
+            message_id: convert_hex_string_to_h256(&event_data.message_id).unwrap(),
+            payment: U256::from_str(&event_data.required_amount).unwrap(),
+            gas_amount: U256::from_str(&event_data.gas_amount).unwrap(),
+        }
+    }
+}
+
+impl TxSpecificData for GasPaymentEventData {
+    fn checkpoint(&self) -> String {
+        self.checkpoint_number.to_string()
+    }
+    fn tx_digest(&self) -> String {
+        self.event_id.tx_digest.to_string()
     }
 }
 
@@ -127,24 +142,26 @@ pub struct DispatchEventData {
     pub message_id: String,
     pub recipient: String,
     pub block_height: String,
-    pub transaction_hash: String,
+    pub transaction_digest: String,
     pub sender: String,
 }
 
 impl TxSpecificData for DispatchEventData {
-    fn block_height(&self) -> String {
+    fn checkpoint(&self) -> String {
         self.block_height.clone()
     }
-    fn transaction_hash(&self) -> String {
-        self.transaction_hash.clone()
+    fn tx_digest(&self) -> String {
+        self.transaction_digest.clone()
     }
 }
 
-impl TryFrom<Event> for DispatchEventData {
+impl TryFrom<SuiEvent> for DispatchEventData {
     type Error = ChainCommunicationError;
-    fn try_from(value: Event) -> Result<Self, Self::Error> {
-        serde_json::from_str::<Self>(&value.data.to_string())
+    fn try_from(value: SuiEvent) -> Result<Self, Self::Error> {
+        let contents = bcs::from_bytes::<DispatchEventData>(&value.bcs)
             .map_err(ChainCommunicationError::from_other)
+            .unwrap();
+        Ok(contents)
     }
 }
 
@@ -171,4 +188,32 @@ pub struct MsgProcessEventData {
     pub block_height: String,
     /// has of transaction
     pub transaction_hash: String,
+}
+
+pub trait EventSourceLocator {
+    fn package_address(&self) -> SuiAddress;
+    fn module(&self) -> SuiModule;
+}
+
+pub trait FilterBuilder: EventSourceLocator {
+    /// Build a filter for the event
+    fn build_filter(&self, event_name: &str, range: RangeInclusive<u32>) -> EventFilter {
+        EventFilter::All(vec![
+            EventFilter::Sender(self.package_address()),
+            EventFilter::MoveEventModule {
+                package: self.module().package,
+                module: self.module().module,
+            },
+            EventFilter::TimeRange {
+                start_time: *range.start() as u64,
+                end_time: *range.end() as u64,
+            },
+            EventFilter::MoveEventType(StructTag {
+                address: self.package_address().into(),
+                module: self.module().module,
+                name: Identifier::new(event_name).expect("Failed to create Identifier"),
+                type_params: vec![],
+            }),
+        ])
+    }
 }

@@ -1,6 +1,8 @@
 use std::ops::RangeInclusive;
 
-use crate::{get_filtered_events, ConnectionConf, SuiHpProvider, SuiRpcClient};
+use crate::{
+    get_filtered_events, ConnectionConf, EventSourceLocator, FilterBuilder, GasPaymentEventData, SuiHpProvider, SuiModule, SuiRpcClient
+};
 use ::sui_sdk::types::base_types::SuiAddress;
 use async_trait::async_trait;
 use hex;
@@ -9,6 +11,7 @@ use hyperlane_core::{
     HyperlaneDomain, HyperlaneProvider, Indexer, InterchainGasPaymaster, InterchainGasPayment,
     LogMeta, H256,
 };
+use move_core_types::identifier::Identifier;
 use sui_sdk::types::{base_types::ObjectID, digests::TransactionDigest};
 use tracing::{info, instrument};
 
@@ -80,7 +83,19 @@ impl InterchainGasPaymaster for SuiInterchainGasPaymaster {}
 pub struct SuiInterchainGasPaymasterIndexer {
     sui_client: SuiRpcClient,
     package_address: SuiAddress,
-    package_id: Option<ObjectID>,
+    module: Option<SuiModule>,
+}
+
+impl FilterBuilder for SuiInterchainGasPaymasterIndexer {}
+
+impl EventSourceLocator for SuiInterchainGasPaymasterIndexer {
+    fn package_address(&self) -> SuiAddress {
+        self.package_address
+    }
+
+    fn module(&self) -> SuiModule {
+        self.module.unwrap() // remove unwrap here!
+    }
 }
 
 impl SuiInterchainGasPaymasterIndexer {
@@ -106,17 +121,22 @@ impl SuiInterchainGasPaymasterIndexer {
                 package_address.to_hex_literal()
             )
         });
+        // TODO: quite sure object_id value here is wrong,
+        // we need ObjectID of the package not owned objects, temp.
         if let Some(data) = &object.data {
             return Self {
                 sui_client,
                 package_address,
-                package_id: Some(data.object_id),
+                module: Some(SuiModule {
+                    package: data.object_id.clone(),
+                    module: Identifier::new("hg_igps").expect("Failed to create Identifier"),
+                }),
             };
         } else {
             Self {
                 sui_client,
                 package_address,
-                package_id: None,
+                module: None,
             }
         }
     }
@@ -129,11 +149,10 @@ impl Indexer<InterchainGasPayment> for SuiInterchainGasPaymasterIndexer {
         &self,
         range: RangeInclusive<u32>,
     ) -> ChainResult<Vec<(InterchainGasPayment, LogMeta)>> {
-        get_filtered_events(
+        get_filtered_events::<InterchainGasPayment, GasPaymentEventData>(
             &self.sui_client,
-            &self.package_id,
-            &format!("{}::igps::IgpState", self.package_address.to_hex_literal()),
-            range,
+            self.module.unwrap(),
+            self.build_filter("GasPaymentEvent", range),
         )
         .await
     }

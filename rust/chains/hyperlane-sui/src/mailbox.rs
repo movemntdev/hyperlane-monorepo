@@ -15,13 +15,13 @@ use sui_keys::keystore::{AccountKeystore, Keystore};
 use sui_sdk::{
     json::{MoveTypeLayout, SuiJsonValue},
     rpc_types::{EventFilter, SuiTransactionBlockEffectsAPI},
-    types::{base_types::SuiAddress, execution, sui_serde::SuiStructTag, transaction::CallArg},
+    types::{base_types::SuiAddress, execution, parse_sui_struct_tag, transaction::CallArg},
 };
 use tracing::{info, instrument};
 use url::Url;
 
 use crate::{
-    convert_hex_string_to_h256, convert_keypair_to_sui_keystore, get_filtered_events, move_mutate_call, move_view_call, send_owned_objects_request, total_gas, AddressFormatter, ConnectionConf, DispatchEventData, ExecuteMode, MsgProcessEventData, SuiHpProvider, SuiModule, SuiRpcClient, TryIntoPrimitive, GAS_UNIT_PRICE
+    convert_hex_string_to_h256, convert_keypair_to_sui_keystore, get_filtered_events, move_mutate_call, move_view_call, send_owned_objects_request, total_gas, AddressFormatter, ConnectionConf, DispatchEventData, EventSourceLocator, ExecuteMode, FilterBuilder, MsgProcessEventData, SuiHpProvider, SuiModule, SuiRpcClient, TryIntoPrimitive, GAS_UNIT_PRICE
 };
 
 /// A reference to a Mailbox contract on some Sui chain
@@ -244,7 +244,7 @@ impl Mailbox for SuiMailbox {
             .expect("Failed to get owned objects");
 
         let mut encoded_message = vec![];
-        message_write_to(&mut encoded_message).unwrap();
+        message.write_to(&mut encoded_message).unwrap();
 
         let payer_keypair = self
             .payer
@@ -298,7 +298,19 @@ pub struct SuiMailboxIndexer {
     mailbox: SuiMailbox,
     sui_client: SuiRpcClient,
     package_address: SuiAddress,
-    sui_module: Option<SuiModule>
+    module: Option<SuiModule>,
+}
+
+impl FilterBuilder for SuiMailboxIndexer {}
+
+impl EventSourceLocator for SuiMailboxIndexer {
+    fn package_address(&self) -> SuiAddress {
+        self.package_address
+    }
+
+    fn module(&self) -> SuiModule {
+        self.module.unwrap() // remove unwrap here!
+    }
 }
 
 impl SuiMailboxIndexer {
@@ -314,7 +326,7 @@ impl SuiMailboxIndexer {
             mailbox,
             sui_client,
             package_address,
-            sui_module: None // TODO: Get the module info from the chain add to locator
+            module: None, // TODO: Get the module info from the chain add to locator
         })
     }
 
@@ -343,33 +355,16 @@ impl SequenceIndexer<HyperlaneMessage> for SuiMailboxIndexer {
 #[async_trait]
 impl Indexer<HyperlaneMessage> for SuiMailboxIndexer {
     /// fetch the events from the mailbox Sui Move Module
-    /// in Sui, we cannot filter range by blockheight, 
+    /// in Sui, we cannot filter range by blockheight,
     /// so we use the `range` arg to filter by timestamp
     async fn fetch_logs(
         &self,
         range: RangeInclusive<u32>,
     ) -> ChainResult<Vec<(HyperlaneMessage, LogMeta)>> {
-        let filter = EventFilter::All(vec![
-            EventFilter::Sender(self.package_address),
-            EventFilter::MoveEventModule{ 
-                package: self.sui_module.unwrap().package,
-                module: self.sui_module.unwrap().module,
-            },
-            EventFilter::TimeRange {
-                start_time: *range.start() as u64,
-                end_time: *range.end() as u64,
-            },
-            EventFilter::MoveEventType(StructTag {
-                address: self.package_address.into(),
-                module: self.sui_module.unwrap().module,
-                name: Identifier::new("DispatchEvent"),
-                type_params: vec![],
-            })
-        ]);
         get_filtered_events(
             &self.sui_client,
-            self.sui_module.unwrap(),
-            filter,
+            self.module(),
+            self.build_filter("DispatchEvent", range),
         )
         .await
     }
@@ -382,29 +377,10 @@ impl Indexer<HyperlaneMessage> for SuiMailboxIndexer {
 #[async_trait]
 impl Indexer<H256> for SuiMailboxIndexer {
     async fn fetch_logs(&self, range: RangeInclusive<u32>) -> ChainResult<Vec<(H256, LogMeta)>> {
-        //TODO: make this logic into a function that takes the event name
-        //repeating logic unneseccary.
-        let filter = EventFilter::All(vec![
-            EventFilter::Sender(self.package_address),
-            EventFilter::MoveEventModule{ 
-                package: self.sui_module.unwrap().package,
-                module: self.sui_module.unwrap().module,
-            },
-            EventFilter::TimeRange {
-                start_time: *range.start() as u64,
-                end_time: *range.end() as u64,
-            },
-            EventFilter::MoveEventType(StructTag {
-                address: self.package_address.into(),
-                module: self.sui_module.unwrap().module,
-                name: Identifier::new("ProcessEvent"),
-                type_params: vec![],
-            })
-        ]); 
-        get_filtered_events::<H256, MsgProcessEventData>(
+        get_filtered_events(
             &self.sui_client,
             self.sui_module.unwrap(),
-            filter,
+            self.build_filter("ProcessEvent", range),
         )
         .await
     }

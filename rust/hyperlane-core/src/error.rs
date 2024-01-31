@@ -232,3 +232,11 @@ pub enum HyperlaneProtocolError {
     #[error("A gas limit was expected for `process` contract call")]
     ProcessGasLimitRequired,
 }
+
+impl From<std::convert::Infallible> for ChainCommunicationError {
+    fn from(e: std::convert::Infallible) -> Self {
+        Self::from_other(e)
+
+    }
+}
+

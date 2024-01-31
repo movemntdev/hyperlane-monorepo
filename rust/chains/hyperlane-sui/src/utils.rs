@@ -24,7 +24,6 @@ use sui_sdk::{
         SuiTransactionBlockResponseOptions, SuiTypeTag,
     },
     sui_client_config::{SuiClientConfig, SuiEnv},
-    types::crypto::DefaultHash,
     types::crypto::SignatureScheme::ED25519,
     types::{
         base_types::{MoveObjectType, ObjectID, SuiAddress},
@@ -38,6 +37,7 @@ use sui_sdk::{
         },
         Identifier, TypeTag,
     },
+    types::{crypto::DefaultHash, event::Event},
     wallet_context::WalletContext,
 };
 use tracing::info;
@@ -51,16 +51,15 @@ pub fn convert_hex_string_to_h256(addr: &str) -> Result<H256, String> {
 }
 
 // TODO: Check this fn
-pub async fn get_filtered_events(
+pub async fn get_filtered_events<T, S>(
     sui_client: &SuiRpcClient,
     module: SuiModule,
     filter: EventFilter,
-) -> ChainResult<Vec<(InterchainGasPayment, LogMeta)>> {
-    if package_id.is_none() {
-        return Err(ChainCommunicationError::SuiObjectReadError(
-            "Package ID is None".to_string(),
-        ));
-    }
+) -> ChainResult<Vec<(T, LogMeta)>>
+where
+    S: TryFrom<SuiEvent> + TxSpecificData + TryInto<T> + Clone,
+    ChainCommunicationError: From<<S as TryFrom<SuiEvent>>::Error> + From<<S as TryInto<T>>::Error>,
+{
     let events_page = sui_client
         .event_api()
         .query_events(filter, None, None, true)
@@ -72,8 +71,7 @@ pub async fn get_filtered_events(
             ))
         })?;
 
-    let mut messages: Vec<(InterchainGasPayment, LogMeta)> =
-        Vec::with_capacity((range.end() - range.start()) as usize);
+    let mut messages: Vec<(T, LogMeta)> = Vec::new();
     for event in events_page.data.into_iter() {
         let tx = sui_client
             .read_api()
@@ -87,11 +85,11 @@ pub async fn get_filtered_events(
             address: event.sender.to_bytes().into(), // Should this be the sender?
             block_number: 0,                         // No block numbers in Sui
             block_hash: H256::zero(),                // No block hash in Sui
-            transaction_id: H512::from(tx),
+            transaction_id: H512::zero(), // fix dummy for now
             transaction_index: 0,    // Not sure what this val should be,
             log_index: U256::zero(), // No block structure in Sui
         };
-        let gas_payment_event_data: GasPaymentEventData = event.parsed_json.try_into()?;
+        let gas_payment_event_data: S = event.try_into()?;
         messages.push((gas_payment_event_data.try_into()?, log_meta));
     }
     Ok(messages)
@@ -210,6 +208,7 @@ pub async fn move_mutate_call(
     let signature = payer_keystore
         .sign_secure(&signer_account, &call, Intent::sui_transaction())
         .expect("Failed to sign message");
+
     let response: SuiTransactionBlockResponse = match execute {
         ExecuteMode::LiveNetwork => sui_client
             .quorum_driver_api()
