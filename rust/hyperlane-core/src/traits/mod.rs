@@ -58,7 +58,7 @@ impl From<ethers_core::types::TransactionReceipt> for TxOutcome {
             gas_price: t
                 .effective_gas_price
                 .and_then(|price| U256::from(price).try_into().ok())
-                .unwrap_or(FixedPointNumber::zero()),
+                .unwrap_or(U256::zero()),
         }
     }
 }

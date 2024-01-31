@@ -1,12 +1,12 @@
 use std::str::FromStr;
 
-use hyperlane_core::{ChainCommunicationError, InterchainGasPayment, H256, U256};
+use hyperlane_core::{ChainCommunicationError, Decode, HyperlaneMessage, InterchainGasPayment, H256, U256};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sui_sdk::{
     json::SuiJsonValue,
     rpc_types::{DryRunTransactionBlockResponse, SuiEvent, SuiTransactionBlockResponse},
-    types::{base_types::SuiAddress, digests::TransactionDigest, event::EventID},
+    types::{base_types::{ObjectID, SuiAddress}, digests::TransactionDigest, event::{Event, EventID}, Identifier},
 };
 
 use crate::convert_hex_string_to_h256;
@@ -15,6 +15,13 @@ pub enum ExecuteMode {
     LiveNetwork,
     Simulate,
 }
+
+#[derive(Debug)]
+pub struct SuiModule {
+    pub package: ObjectID,
+    pub module: Identifier
+}
+
 pub trait TryIntoPrimitive {
     fn try_into_bool(&self) -> Result<bool, anyhow::Error>;
     fn try_into_h256(&self) -> Result<H256, anyhow::Error>;
@@ -110,4 +117,58 @@ impl TryInto<InterchainGasPayment> for GasPaymentEventData {
                 .unwrap(),
         })
     }
+}
+
+///Event Data of Message Dispatch
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct DispatchEventData {
+    pub dest_domain: u64,
+    pub message: String,
+    pub message_id: String,
+    pub recipient: String,
+    pub block_height: String,
+    pub transaction_hash: String,
+    pub sender: String,
+}
+
+impl TxSpecificData for DispatchEventData {
+    fn block_height(&self) -> String {
+        self.block_height.clone()
+    }
+    fn transaction_hash(&self) -> String {
+        self.transaction_hash.clone()
+    }
+}
+
+impl TryFrom<Event> for DispatchEventData {
+    type Error = ChainCommunicationError;
+    fn try_from(value: Event) -> Result<Self, Self::Error> {
+        serde_json::from_str::<Self>(&value.data.to_string())
+            .map_err(ChainCommunicationError::from_other)
+    }
+}
+
+impl TryInto<HyperlaneMessage> for DispatchEventData {
+    type Error = hyperlane_core::HyperlaneProtocolError;
+    fn try_into(self) -> Result<HyperlaneMessage, Self::Error> {
+        let hex_bytes = hex::decode(&self.message.trim_start_matches("0x")).unwrap();
+        HyperlaneMessage::read_from(&mut &hex_bytes[..])
+    }
+}
+
+/// Move Calue Data of GasPaymen Event
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct MsgProcessEventData {
+    /// hyperlane message id
+    pub message_id: String,
+    /// domain of origin chain
+    pub origin_domain: u32,
+    /// address of sender (router)
+    pub sender: String,
+    /// address of recipient
+    pub recipient: String,
+    /// block number
+    pub block_height: String,
+    /// has of transaction
+    pub transaction_hash: String,
 }

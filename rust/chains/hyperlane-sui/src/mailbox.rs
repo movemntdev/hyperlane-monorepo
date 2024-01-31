@@ -1,28 +1,27 @@
-use std::{num::NonZeroU64, ops::RangeInclusive, str::FromStr};
+use std::{collections::HashMap, num::NonZeroU64, ops::RangeInclusive, str::FromStr};
 
 use async_trait::async_trait;
 use base64::write;
 use hyperlane_core::{
-    ChainCommunicationError, ChainResult, ContractLocator, Encode, HyperlaneChain,
-    HyperlaneContract, HyperlaneDomain, HyperlaneMessage, HyperlaneProvider, Indexer, Mailbox,
-    TxCostEstimate, TxOutcome, H256, H512, U256,
+    ChainCommunicationError, ChainResult, ContractLocator, Decode, Encode, HyperlaneAbi,
+    HyperlaneChain, HyperlaneContract, HyperlaneDomain, HyperlaneMessage, HyperlaneProvider,
+    Indexer, LogMeta, Mailbox, SequenceIndexer, TxCostEstimate, TxOutcome, H256, H512, U256,
 };
+use move_core_types::{identifier::Identifier, language_storage::StructTag};
 use shared_crypto::intent::Intent;
 use solana_sdk::pubkey::ParsePubkeyError;
 use solana_sdk::signature::Keypair;
 use sui_keys::keystore::{AccountKeystore, Keystore};
 use sui_sdk::{
     json::{MoveTypeLayout, SuiJsonValue},
-    rpc_types::SuiTransactionBlockEffectsAPI,
-    types::{base_types::SuiAddress, execution, transaction::CallArg},
+    rpc_types::{EventFilter, SuiTransactionBlockEffectsAPI},
+    types::{base_types::SuiAddress, execution, sui_serde::SuiStructTag, transaction::CallArg},
 };
 use tracing::{info, instrument};
 use url::Url;
 
 use crate::{
-    convert_hex_string_to_h256, convert_keypair_to_sui_keystore, move_mutate_call, move_view_call,
-    send_owned_objects_request, total_gas, AddressFormatter, ConnectionConf, ExecuteMode,
-    SuiHpProvider, SuiRpcClient, TryIntoPrimitive, GAS_UNIT_PRICE,
+    convert_hex_string_to_h256, convert_keypair_to_sui_keystore, get_filtered_events, move_mutate_call, move_view_call, send_owned_objects_request, total_gas, AddressFormatter, ConnectionConf, DispatchEventData, ExecuteMode, MsgProcessEventData, SuiHpProvider, SuiModule, SuiRpcClient, TryIntoPrimitive, GAS_UNIT_PRICE
 };
 
 /// A reference to a Mailbox contract on some Sui chain
@@ -214,7 +213,7 @@ impl Mailbox for SuiMailbox {
                 )
                 .expect("Failed to convert metadata to SuiJsonValue"),
             ],
-            ExecuteMode::RealState,
+            ExecuteMode::LiveNetwork,
         )
         .await?;
         let tx_hash = convert_hex_string_to_h256(&response.digest.to_string()).unwrap();
@@ -288,7 +287,6 @@ impl Mailbox for SuiMailbox {
         })
     }
 
-    #[instrument(err, ret, skip(self))]
     fn process_calldata(&self, _message: &HyperlaneMessage, _metadata: &[u8]) -> Vec<u8> {
         todo!()
     }
@@ -300,6 +298,7 @@ pub struct SuiMailboxIndexer {
     mailbox: SuiMailbox,
     sui_client: SuiRpcClient,
     package_address: SuiAddress,
+    sui_module: Option<SuiModule>
 }
 
 impl SuiMailboxIndexer {
@@ -315,6 +314,7 @@ impl SuiMailboxIndexer {
             mailbox,
             sui_client,
             package_address,
+            sui_module: None // TODO: Get the module info from the chain add to locator
         })
     }
 
@@ -325,9 +325,8 @@ impl SuiMailboxIndexer {
             .get_latest_checkpoint_sequence_number()
             .await
             .map_err(ChainCommunicationError::from_other)
-            .unwrap()
-            .into_inner();
-        Ok(chain_state)
+            .unwrap();
+        Ok(chain_state as u32)
     }
 }
 
@@ -343,19 +342,34 @@ impl SequenceIndexer<HyperlaneMessage> for SuiMailboxIndexer {
 
 #[async_trait]
 impl Indexer<HyperlaneMessage> for SuiMailboxIndexer {
+    /// fetch the events from the mailbox Sui Move Module
+    /// in Sui, we cannot filter range by blockheight, 
+    /// so we use the `range` arg to filter by timestamp
     async fn fetch_logs(
         &self,
         range: RangeInclusive<u32>,
-    ) -> ChainResult<Vec<(HyperlabeMessage, LogMeta)>> {
-        get_filtered_events::<HyperlaneMessage, DispatchEventData>(
+    ) -> ChainResult<Vec<(HyperlaneMessage, LogMeta)>> {
+        let filter = EventFilter::All(vec![
+            EventFilter::Sender(self.package_address),
+            EventFilter::MoveEventModule{ 
+                package: self.sui_module.unwrap().package,
+                module: self.sui_module.unwrap().module,
+            },
+            EventFilter::TimeRange {
+                start_time: *range.start() as u64,
+                end_time: *range.end() as u64,
+            },
+            EventFilter::MoveEventType(StructTag {
+                address: self.package_address.into(),
+                module: self.sui_module.unwrap().module,
+                name: Identifier::new("DispatchEvent"),
+                type_params: vec![],
+            })
+        ]);
+        get_filtered_events(
             &self.sui_client,
-            self.package_address,
-            &format!(
-                "{}::mailbox::MailBoxState",
-                self.package_address.to_hex_literal()
-            ),
-            "dispatch_events".to_string(),
-            range,
+            self.sui_module.unwrap(),
+            filter,
         )
         .await
     }
@@ -368,15 +382,29 @@ impl Indexer<HyperlaneMessage> for SuiMailboxIndexer {
 #[async_trait]
 impl Indexer<H256> for SuiMailboxIndexer {
     async fn fetch_logs(&self, range: RangeInclusive<u32>) -> ChainResult<Vec<(H256, LogMeta)>> {
+        //TODO: make this logic into a function that takes the event name
+        //repeating logic unneseccary.
+        let filter = EventFilter::All(vec![
+            EventFilter::Sender(self.package_address),
+            EventFilter::MoveEventModule{ 
+                package: self.sui_module.unwrap().package,
+                module: self.sui_module.unwrap().module,
+            },
+            EventFilter::TimeRange {
+                start_time: *range.start() as u64,
+                end_time: *range.end() as u64,
+            },
+            EventFilter::MoveEventType(StructTag {
+                address: self.package_address.into(),
+                module: self.sui_module.unwrap().module,
+                name: Identifier::new("ProcessEvent"),
+                type_params: vec![],
+            })
+        ]); 
         get_filtered_events::<H256, MsgProcessEventData>(
             &self.sui_client,
-            self.package_address,
-            &format!(
-                "{}::mailbox::MailBoxState",
-                self.package_address.to_hex_literal()
-            ),
-            "process_events",
-            range,
+            self.sui_module.unwrap(),
+            filter,
         )
         .await
     }

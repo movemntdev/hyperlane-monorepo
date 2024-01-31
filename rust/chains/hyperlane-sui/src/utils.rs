@@ -1,6 +1,6 @@
 use crate::{
-    AddressFormatter, ExecuteMode, GasPaymentEventData, HyperlaneSuiError, SuiRpcClient,
-    TxSpecificData,
+    AddressFormatter, ConvertFromDryRun, ExecuteMode, GasPaymentEventData, HyperlaneSuiError,
+    SuiModule, SuiRpcClient, TxSpecificData,
 };
 use anyhow::{Chain, Error};
 use fastcrypto::encoding::Encoding;
@@ -19,7 +19,9 @@ use sui_keys::keystore::{AccountKeystore, FileBasedKeystore, Keystore};
 use sui_sdk::{
     json::SuiJsonValue,
     rpc_types::{
-        DevInspectResults, EventFilter, SuiEvent, SuiExecutionResult, SuiParsedData, SuiTransactionBlockEffectsAPI, SuiTransactionBlockResponse, SuiTransactionBlockResponseOptions, SuiTypeTag
+        DevInspectResults, EventFilter, SuiEvent, SuiExecutionResult, SuiParsedData,
+        SuiTransactionBlockEffectsAPI, SuiTransactionBlockResponse,
+        SuiTransactionBlockResponseOptions, SuiTypeTag,
     },
     sui_client_config::{SuiClientConfig, SuiEnv},
     types::crypto::DefaultHash,
@@ -48,11 +50,11 @@ pub fn convert_hex_string_to_h256(addr: &str) -> Result<H256, String> {
     H256::from_str(&formated_addr).map_err(|e| e.to_string())
 }
 
+// TODO: Check this fn
 pub async fn get_filtered_events(
     sui_client: &SuiRpcClient,
-    package_id: &Option<ObjectID>,
-    struct_tag: &str,
-    range: RangeInclusive<u32>,
+    module: SuiModule,
+    filter: EventFilter,
 ) -> ChainResult<Vec<(InterchainGasPayment, LogMeta)>> {
     if package_id.is_none() {
         return Err(ChainCommunicationError::SuiObjectReadError(
@@ -61,7 +63,7 @@ pub async fn get_filtered_events(
     }
     let events_page = sui_client
         .event_api()
-        .query_events(EventFilter::Package(package_id.unwrap()), None, None, true)
+        .query_events(filter, None, None, true)
         .await
         .map_err(|e| {
             ChainCommunicationError::SuiObjectReadError(format!(
@@ -73,12 +75,19 @@ pub async fn get_filtered_events(
     let mut messages: Vec<(InterchainGasPayment, LogMeta)> =
         Vec::with_capacity((range.end() - range.start()) as usize);
     for event in events_page.data.into_iter() {
-        // Mainly using dummy values untile LogMeta is an enum
+        let tx = sui_client
+            .read_api()
+            .get_transaction_with_options(
+                event.id.tx_digest,
+                SuiTransactionBlockResponseOptions::full_content(),
+            )
+            .await
+            .expect("Failed to get transaction");
         let log_meta = LogMeta {
             address: event.sender.to_bytes().into(), // Should this be the sender?
             block_number: 0,                         // No block numbers in Sui
             block_hash: H256::zero(),                // No block hash in Sui
-            transaction_id: H512::zero(),
+            transaction_id: H512::from(tx),
             transaction_index: 0,    // Not sure what this val should be,
             log_index: U256::zero(), // No block structure in Sui
         };
@@ -131,10 +140,6 @@ pub async fn send_owned_objects_request(
         )),
     }
 }
-
-/// TODO, these move calls can be made into one function with
-/// a single struct for params and some Option Fields,
-/// then we can match on som value to dispatch to mutable or immutable call
 
 /// Make a call to a move view only public function.
 /// Internally, the ProgrammableTransactionBuilder
@@ -215,12 +220,14 @@ pub async fn move_mutate_call(
             )
             .await
             .unwrap(),
-        ExecuteMode::Simulate => sui_client
-            .read_api()
-            .dry_run_transaction_block(call)
-            .await
-            .unwrap()
-            .into(),
+        ExecuteMode::Simulate => {
+            let response = sui_client
+                .read_api()
+                .dry_run_transaction_block(call)
+                .await
+                .unwrap();
+            SuiTransactionBlockResponse::convert_from(response)
+        }
     };
 
     match response.confirmed_local_execution {

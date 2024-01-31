@@ -13,6 +13,7 @@ bcs.workspace = true
 borsh.workspace = true
 fastcrypto.workspace = true
 jsonrpc-core.workspace = true
+move-core-types.workspace = true
 num-traits.workspace = true
 hex.workspace = true
 serde.workspace = true

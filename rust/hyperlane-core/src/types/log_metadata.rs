@@ -7,6 +7,9 @@ use ethers_contract::LogMeta as EthersLogMeta;
 
 use crate::{H256, H512, U256};
 
+//TODO: Make SuiLogMeta and LogMeta two variants of the same enum LogMeta.
+//will have breaking changes across hyperlane-core so a seperate PR.
+
 /// A close clone of the Ethereum `LogMeta`, this is designed to be a more
 /// generic metadata that we can use for other blockchains later. Some changes
 /// may be required in the future.
