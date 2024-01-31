@@ -236,7 +236,6 @@ pub enum HyperlaneProtocolError {
 impl From<std::convert::Infallible> for ChainCommunicationError {
     fn from(e: std::convert::Infallible) -> Self {
         Self::from_other(e)
-
     }
 }
 

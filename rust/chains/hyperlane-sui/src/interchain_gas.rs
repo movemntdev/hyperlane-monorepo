@@ -93,8 +93,8 @@ impl EventSourceLocator for SuiInterchainGasPaymasterIndexer {
         self.package_address
     }
 
-    fn module(&self) -> SuiModule {
-        self.module.unwrap() // remove unwrap here!
+    fn module(&self) -> &SuiModule {
+        self.module.as_ref().unwrap() // remove unwrap here!
     }
 }
 
@@ -151,7 +151,7 @@ impl Indexer<InterchainGasPayment> for SuiInterchainGasPaymasterIndexer {
     ) -> ChainResult<Vec<(InterchainGasPayment, LogMeta)>> {
         get_filtered_events::<InterchainGasPayment, GasPaymentEventData>(
             &self.sui_client,
-            self.module.unwrap(),
+            self.module(),
             self.build_filter("GasPaymentEvent", range),
         )
         .await

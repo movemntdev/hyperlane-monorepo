@@ -104,6 +104,26 @@ pub struct GasPaymentEventData {
     pub event_id: EventID,
 }
 
+impl From<GasPaymentEventData> for HyperlaneMessage {
+    fn from(event_data: GasPaymentEventData) -> Self {
+        HyperlaneMessage {
+            version: 3,
+            nonce: 0,
+            origin: 0,
+            sender: H256::zero(),
+            destination: event_data.dest_domain.parse::<u32>().unwrap(),
+            recipient: H256::zero(),
+            body: Vec::new(),
+        }
+    }
+}
+
+impl From<GasPaymentEventData> for H256 {
+    fn from(event_data: GasPaymentEventData) -> Self {
+        convert_hex_string_to_h256(&event_data.message_id).unwrap()
+    }
+}
+
 impl TryFrom<SuiEvent> for GasPaymentEventData {
     type Error = ChainCommunicationError;
     fn try_from(event: SuiEvent) -> Result<Self, Self::Error> {
@@ -192,7 +212,7 @@ pub struct MsgProcessEventData {
 
 pub trait EventSourceLocator {
     fn package_address(&self) -> SuiAddress;
-    fn module(&self) -> SuiModule;
+    fn module(&self) -> &SuiModule;
 }
 
 pub trait FilterBuilder: EventSourceLocator {
@@ -202,7 +222,7 @@ pub trait FilterBuilder: EventSourceLocator {
             EventFilter::Sender(self.package_address()),
             EventFilter::MoveEventModule {
                 package: self.module().package,
-                module: self.module().module,
+                module: self.module().module.clone(),
             },
             EventFilter::TimeRange {
                 start_time: *range.start() as u64,
@@ -210,7 +230,7 @@ pub trait FilterBuilder: EventSourceLocator {
             },
             EventFilter::MoveEventType(StructTag {
                 address: self.package_address().into(),
-                module: self.module().module,
+                module: self.module().module.clone(),
                 name: Identifier::new(event_name).expect("Failed to create Identifier"),
                 type_params: vec![],
             }),

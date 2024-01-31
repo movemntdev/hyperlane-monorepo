@@ -484,7 +484,7 @@ impl Mailbox for SealevelMailbox {
         // TODO use correct data upon integrating IGP support
         Ok(TxCostEstimate {
             gas_limit: U256::zero(),
-            gas_price: FixedPointNumber::zero(),
+            gas_price: U256::zero(),
             l2_gas_limit: None,
         })
     }

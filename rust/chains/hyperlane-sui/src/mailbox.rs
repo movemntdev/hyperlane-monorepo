@@ -21,7 +21,7 @@ use tracing::{info, instrument};
 use url::Url;
 
 use crate::{
-    convert_hex_string_to_h256, convert_keypair_to_sui_keystore, get_filtered_events, move_mutate_call, move_view_call, send_owned_objects_request, total_gas, AddressFormatter, ConnectionConf, DispatchEventData, EventSourceLocator, ExecuteMode, FilterBuilder, MsgProcessEventData, SuiHpProvider, SuiModule, SuiRpcClient, TryIntoPrimitive, GAS_UNIT_PRICE
+    convert_hex_string_to_h256, convert_keypair_to_sui_keystore, get_filtered_events, move_mutate_call, move_view_call, send_owned_objects_request, total_gas, AddressFormatter, ConnectionConf, DispatchEventData, EventSourceLocator, ExecuteMode, FilterBuilder, GasPaymentEventData, MsgProcessEventData, SuiHpProvider, SuiModule, SuiRpcClient, TryIntoPrimitive, GAS_UNIT_PRICE
 };
 
 /// A reference to a Mailbox contract on some Sui chain
@@ -46,8 +46,8 @@ impl SuiMailbox {
             .block_on(async { SuiRpcClient::new(conf.url.to_string()).await })
             .expect("Failed to create SuiRpcClient");
         Ok(Self {
-            domain: *locator.domain,
-            rest_url: conf.url,
+            domain: locator.domain.clone(),
+            rest_url: conf.url.clone(),
             sui_client,
             packages_address: package_address,
             payer,
@@ -113,7 +113,7 @@ impl Mailbox for SuiMailbox {
             vec![CallArg::Pure(Vec::from(id.as_bytes()))],
         )
         .await?;
-        let (bytes, type_tag) = view_response[0].return_values[0];
+        let (bytes, type_tag) = &view_response[0].return_values[0];
         let delivered_json =
             SuiJsonValue::from_bcs_bytes(Some(&MoveTypeLayout::Bool), &bytes).unwrap();
         Ok(delivered_json
@@ -135,7 +135,7 @@ impl Mailbox for SuiMailbox {
         .await?;
 
         // @TODO this should be the zeroth index for both fields. But unit test this.
-        let (bytes, type_tag) = view_response[0].return_values[0];
+        let (bytes, type_tag) = &view_response[0].return_values[0];
         let ism_json =
             SuiJsonValue::from_bcs_bytes(Some(&MoveTypeLayout::Address), &bytes).unwrap();
         Ok(ism_json.try_into_h256().expect("Failed to convert to H256"))
@@ -155,7 +155,7 @@ impl Mailbox for SuiMailbox {
         .await?;
 
         // @TODO this should be the zeroth index for both fields. But unit test this.
-        let (bytes, type_tag) = view_response[0].return_values[0];
+        let (bytes, type_tag) = &view_response[0].return_values[0];
         let ism_json =
             SuiJsonValue::from_bcs_bytes(Some(&MoveTypeLayout::Address), &bytes).unwrap();
         Ok(ism_json.try_into_h256().expect("Failed to convert to H256"))
@@ -169,12 +169,13 @@ impl Mailbox for SuiMailbox {
         _tx_gas_limit: Option<U256>,
     ) -> ChainResult<TxOutcome> {
         let recipient = SuiAddress::from_bytes(message.recipient.0).unwrap();
-        let object = self
+        let objects = self
             .sui_client
             .read_api()
             .get_owned_objects(recipient, None, None, None)
             .await
-            .expect("Failed to get owned objects")
+            .expect("Failed to get owned objects");
+        let object = objects
             .data
             .first()
             .expect("Failed to get owned objects");
@@ -197,7 +198,7 @@ impl Mailbox for SuiMailbox {
         let response = move_mutate_call(
             &self.sui_client,
             payer_keystore,
-            object.data.unwrap().object_id, //check this not sure if this ID correlates to the module ID we want
+            object.data.as_ref().unwrap().object_id, //check this not sure if this ID correlates to the module ID we want
             bcs::from_bytes(&recipient_module_name).unwrap(),
             "handle_message".to_string(),
             vec![],
@@ -233,12 +234,13 @@ impl Mailbox for SuiMailbox {
         metadata: &[u8],
     ) -> ChainResult<TxCostEstimate> {
         let recipient = SuiAddress::from_bytes(message.recipient.0).unwrap();
-        let object = self
+        let objects = self
             .sui_client
             .read_api()
             .get_owned_objects(recipient, None, None, None)
             .await
-            .expect("Failed to get owned objects")
+            .expect("Failed to get owned objects");
+        let object = objects
             .data
             .first()
             .expect("Failed to get owned objects");
@@ -260,7 +262,7 @@ impl Mailbox for SuiMailbox {
         let response = move_mutate_call(
             &self.sui_client,
             payer_keystore,
-            object.data.unwrap().object_id, //check this not sure if this ID correlates to the module ID we want
+            object.data.as_ref().unwrap().object_id, //check this not sure if this ID correlates to the module ID we want
             bcs::from_bytes(&recipient_module_name).unwrap(),
             "handle_message".to_string(),
             vec![],
@@ -308,8 +310,8 @@ impl EventSourceLocator for SuiMailboxIndexer {
         self.package_address
     }
 
-    fn module(&self) -> SuiModule {
-        self.module.unwrap() // remove unwrap here!
+    fn module(&self) -> &SuiModule {
+        self.module.as_ref().unwrap() // borrow the contents of self.module instead of moving it out
     }
 }
 
@@ -361,7 +363,7 @@ impl Indexer<HyperlaneMessage> for SuiMailboxIndexer {
         &self,
         range: RangeInclusive<u32>,
     ) -> ChainResult<Vec<(HyperlaneMessage, LogMeta)>> {
-        get_filtered_events(
+        get_filtered_events::<HyperlaneMessage, GasPaymentEventData>(
             &self.sui_client,
             self.module(),
             self.build_filter("DispatchEvent", range),
@@ -377,9 +379,9 @@ impl Indexer<HyperlaneMessage> for SuiMailboxIndexer {
 #[async_trait]
 impl Indexer<H256> for SuiMailboxIndexer {
     async fn fetch_logs(&self, range: RangeInclusive<u32>) -> ChainResult<Vec<(H256, LogMeta)>> {
-        get_filtered_events(
+        get_filtered_events::<H256, GasPaymentEventData>(
             &self.sui_client,
-            self.sui_module.unwrap(),
+            self.module(),
             self.build_filter("ProcessEvent", range),
         )
         .await

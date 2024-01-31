@@ -53,7 +53,7 @@ pub fn convert_hex_string_to_h256(addr: &str) -> Result<H256, String> {
 // TODO: Check this fn
 pub async fn get_filtered_events<T, S>(
     sui_client: &SuiRpcClient,
-    module: SuiModule,
+    module: &SuiModule,
     filter: EventFilter,
 ) -> ChainResult<Vec<(T, LogMeta)>>
 where
@@ -287,7 +287,9 @@ pub async fn convert_keypair_to_sui_keystore(
     Ok(keystore)
 }
 
+/// Get the gas total payment events from the chain
 pub fn total_gas(response: SuiTransactionBlockResponse) -> u64 {
-    let gas_summary = response.effects.unwrap().gas_cost_summary();
+    let effects = response.effects.unwrap();
+    let gas_summary = effects.gas_cost_summary();
     gas_summary.computation_cost + gas_summary.storage_cost + gas_summary.non_refundable_storage_fee
 }
