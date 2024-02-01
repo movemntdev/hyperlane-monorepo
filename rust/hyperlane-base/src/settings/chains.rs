@@ -560,9 +560,9 @@ impl ChainConf {
                 )?);
                 Ok(ism as Box<dyn MultisigIsm>)
             }
-            ChainConnectionConf::Suif(conf) => {
+            ChainConnectionConf::Sui(conf) => {
                 let keypair = self.sui_signer().await.context(ctx)?;
-                let ism = Box::new(h_sui::SuiMultisigIsm::new(conf, locator, keypair));
+                let ism = Box::new(h_sui::SuiMultisigISM::new(conf, locator, keypair));
                 Ok(ism as Box<dyn MultisigIsm>)
             }
         }
@@ -668,7 +668,7 @@ impl ChainConf {
             ChainConnectionConf::Cosmos(_) => {
                 Err(eyre!("Cosmos does not support CCIP read ISM yet")).context(ctx)
             }
-            ChainConnectionConf::Sui(conf) => {
+            ChainConnectionConf::Sui(_) => {
                 Err(eyre!("Sui does not support CCIP read ISM yet")).context(ctx)
             }
         }
@@ -695,7 +695,7 @@ impl ChainConf {
                     Box::new(conf.build::<h_sealevel::Keypair>().await?)
                 }
                 ChainConnectionConf::Cosmos(_) => Box::new(conf.build::<h_cosmos::Signer>().await?),
-                ChainConnectionConf::Sui(_) => Box::new(conf.build::<h_sui::Keypair>().await?),
+                ChainConnectionConf::Sui(_) => unimplemented!(), // Need to implement missing signers.rs see Cosmos signers.rs
             };
             Ok(Some(chain_signer))
         } else {
@@ -721,7 +721,9 @@ impl ChainConf {
         self.signer().await
     }
 
-    async fn sui_signer(&self) -> Result<Option<h_sui::Keypair>> {
+    async fn sui_signer(&self) -> Result<Option<h_cosmos::Signer>> {
+        // Need to implement missing signers.rs see Cosmos signers.rs
+        // change return type to h_sui::Signer / h_sui::Keypair
         self.signer().await
     }
 
