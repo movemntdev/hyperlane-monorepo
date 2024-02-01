@@ -1,7 +1,8 @@
 use std::{ops::RangeInclusive, str::FromStr};
 
 use hyperlane_core::{
-    accumulator::{incremental::IncrementalMerkle, TREE_DEPTH}, ChainCommunicationError, Decode, HyperlaneMessage, InterchainGasPayment, H256, U256
+    accumulator::{incremental::IncrementalMerkle, TREE_DEPTH},
+    ChainCommunicationError, Decode, HyperlaneMessage, InterchainGasPayment, H256, U256,
 };
 use move_core_types::language_storage::StructTag;
 use serde::{Deserialize, Serialize};
@@ -21,6 +22,8 @@ use sui_sdk::{
 
 use crate::convert_hex_string_to_h256;
 
+pub type Validators = (Vec<H256>, u8);
+
 pub enum ExecuteMode {
     LiveNetwork,
     Simulate,
@@ -36,6 +39,7 @@ pub trait TryIntoPrimitive {
     fn try_into_bool(&self) -> Result<bool, anyhow::Error>;
     fn try_into_h256(&self) -> Result<H256, anyhow::Error>;
     fn try_into_merkle_tree(&self) -> Result<IncrementalMerkle, anyhow::Error>;
+    fn try_into_validators(&self) -> Result<Validators, anyhow::Error>;
 }
 
 impl TryIntoPrimitive for SuiJsonValue {
@@ -53,6 +57,39 @@ impl TryIntoPrimitive for SuiJsonValue {
                 Ok(convert_hex_string_to_h256(&s).expect("Failed to convert to H256"))
             }
             _ => Err(anyhow::anyhow!("Failed to convert to H256")),
+        }
+    }
+
+    fn try_into_validators(&self) -> Result<Validators, anyhow::Error> {
+        let json_value = self.to_json_value();
+
+        if let Value::Object(map) = json_value {
+            let validators = map.get("validators").ok_or_else(|| {
+                anyhow::anyhow!("Failed to get validators from validators json value")
+            })?;
+            let threshold = map.get("threshold").ok_or_else(|| {
+                anyhow::anyhow!("Failed to get threshold from validators json value")
+            })?;
+
+            let validators_vec = validators.as_array().ok_or_else(|| {
+                anyhow::anyhow!("Failed to get validators as array from validators json value")
+            })?;
+            let mut validators_array: Vec<H256> = Vec::new();
+            for vec_u8 in validators_vec {
+                let vec_u8 = vec_u8.as_array().ok_or_else(|| {
+                    anyhow::anyhow!("Failed to get validators as array from validators json value")
+                })?;
+                let bytes: Vec<u8> = vec_u8.iter().map(|u8| u8.as_u64().unwrap() as u8).collect();
+                validators_array.push(H256::from_slice(&bytes));
+            }
+
+            let threshold_u8 = u8::try_from(threshold.as_u64().unwrap()).map_err(|_| {
+                anyhow::anyhow!("Failed to get threshold as u8 from validators json value")
+            })?;
+
+            Ok((validators_array, threshold_u8))
+        } else {
+            Err(anyhow::anyhow!("Failed to convert to Validators"))
         }
     }
 
@@ -76,10 +113,7 @@ impl TryIntoPrimitive for SuiJsonValue {
                 let vec_u8 = vec_u8.as_array().ok_or_else(|| {
                     anyhow::anyhow!("Failed to get branch as array from merkle tree json value")
                 })?;
-                let bytes: Vec<u8> = vec_u8
-                    .iter()
-                    .map(|u8| u8.as_u64().unwrap() as u8)
-                    .collect();
+                let bytes: Vec<u8> = vec_u8.iter().map(|u8| u8.as_u64().unwrap() as u8).collect();
                 branch_array[1] = H256::from_slice(&bytes);
             }
 
@@ -94,11 +128,12 @@ impl TryIntoPrimitive for SuiJsonValue {
         } else {
             Err(anyhow::anyhow!("Failed to convert to IncrementalMerkle"))
         }
-
     }
 }
 
+/// Trait for converting DryRun Responses to SuiTransactionBlockResponse
 pub trait ConvertFromDryRun {
+    /// Convert from DryRunTransactionBlockResponse to SuiTransactionBlockResponse
     fn convert_from(dry_run_response: DryRunTransactionBlockResponse) -> Self;
 }
 

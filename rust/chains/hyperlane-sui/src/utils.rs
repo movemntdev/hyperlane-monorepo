@@ -142,6 +142,7 @@ pub async fn send_owned_objects_request(
 /// Make a call to a move view only public function.
 /// Internally, the ProgrammableTransactionBuilder
 /// will validate inputs and error if invalid args ar passed.
+// TODO: package_address and sender are the same value? Or are they?
 pub async fn move_view_call(
     sui_client: &SuiRpcClient,
     sender: &SuiAddress,

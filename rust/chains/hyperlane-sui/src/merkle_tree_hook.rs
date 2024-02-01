@@ -44,11 +44,11 @@ impl MerkleTreeHook for SuiMailbox {
             StructTag::from_str("MerkleTree").unwrap(),
             vec![branch_field, count_field],
         );
-        let tree =
+        let tree_json =
             SuiJsonValue::from_bcs_bytes(Some(&MoveTypeLayout::Struct(tree_move_struct)), bytes)
                 .expect("Failed to deserialize tree");
 
-        Ok(tree
+        Ok(tree_json
             .try_into_merkle_tree()
             .expect("Failed to convert to IncrementalMerkle"))
     }

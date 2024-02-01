@@ -15,8 +15,9 @@ mod utils;
 mod mailbox;
 mod error;
 mod merkle_tree_hook;
+mod multisig_ism;
 
 pub use self::{
     client::*, interchain_gas::*, provider::*, trait_builder::*, validator_announce::*,
-    utils::*, types::*, mailbox::*, error::*, merkle_tree_hook::*,
+    utils::*, types::*, mailbox::*, error::*, merkle_tree_hook::*, multisig_ism::*,
 };
