@@ -36,6 +36,7 @@ pub struct SuiModule {
 }
 
 pub trait TryIntoPrimitive {
+    fn try_into_u64(&self) -> Result<u64, anyhow::Error>;
     fn try_into_bool(&self) -> Result<bool, anyhow::Error>;
     fn try_into_h256(&self) -> Result<H256, anyhow::Error>;
     fn try_into_merkle_tree(&self) -> Result<IncrementalMerkle, anyhow::Error>;
@@ -43,6 +44,13 @@ pub trait TryIntoPrimitive {
 }
 
 impl TryIntoPrimitive for SuiJsonValue {
+    fn try_into_u64(&self) -> Result<u64, anyhow::Error> {
+        match self.to_json_value() {
+            Value::Number(n) => Ok(n.as_u64().unwrap()),
+            _ => Err(anyhow::anyhow!("Failed to convert to u64")),
+        }
+    }
+
     fn try_into_bool(&self) -> Result<bool, anyhow::Error> {
         match self.to_json_value() {
             Value::Bool(b) => Ok(b),
@@ -133,7 +141,6 @@ impl TryIntoPrimitive for SuiJsonValue {
 
 /// Trait for converting DryRun Responses to SuiTransactionBlockResponse
 pub trait ConvertFromDryRun {
-    /// Convert from DryRunTransactionBlockResponse to SuiTransactionBlockResponse
     fn convert_from(dry_run_response: DryRunTransactionBlockResponse) -> Self;
 }
 

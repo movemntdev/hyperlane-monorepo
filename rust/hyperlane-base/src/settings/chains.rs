@@ -27,7 +27,6 @@ use crate::{
     CoreMetrics,
 };
 
-
 use super::ChainSigner;
 
 /// A chain setup is a domain ID, an address on that chain (where the mailbox is
@@ -213,7 +212,7 @@ impl ChainConf {
             }
             ChainConnectionConf::Sui(conf) => {
                 let keypair = self.sui_signer().await.context(ctx)?;
-                let hook = h_sui::SuiMerkleTreeHook::new(conf.clone(), locator.clone(), keypair)?;
+                let hook = h_sui::SuiMailbox::new(&conf.clone(), locator.clone(), keypair)?;
 
                 Ok(Box::new(hook) as Box<dyn MerkleTreeHook>)
             }
@@ -387,8 +386,10 @@ impl ChainConf {
                 Ok(indexer as Box<dyn SequenceIndexer<InterchainGasPayment>>)
             }
             ChainConnectionConf::Sui(conf) => {
-                let indexer =
-                    Box::new(h_sui::SuiInterchainGasPaymasterIndexer::new(conf, locator));
+                let indexer = Box::new(
+                    h_sui::SuiInterchainGasPaymasterIndexer::new(conf, locator)
+                        .expect("Failed to create SuiInterchainGasPaymasterIndexer"),
+                );
                 Ok(indexer as Box<dyn SequenceIndexer<InterchainGasPayment>>)
             }
         }
@@ -472,12 +473,11 @@ impl ChainConf {
             }
             ChainConnectionConf::Sui(conf) => {
                 let keypair = self.sui_signer().await.context("Announcing Validator")?;
-                let va = Box::new(h_sui::SuiValidatorAnnounce::new(conf.clone(), locator, keypair));
-                Ok(va as Box<dyn ValidatorAnnounce>)
-            }
-            ChainConnectionConf::Sui(conf) => {
-                let keypair = self.sui_signer().await.context("Announcing Validator")?;
-                let va = Box::new(h_sui::SuiValidatorAnnounce::new(conf.clone(), locator, keypair));
+                let va = Box::new(
+                    h_sui::SuiValidatorAnnounce::new(conf.clone(), locator, keypair)
+                        .await
+                        .expect("Failed to create SuiValidatorAnnounce"),
+                );
                 Ok(va as Box<dyn ValidatorAnnounce>)
             }
         }

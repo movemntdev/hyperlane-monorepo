@@ -8,7 +8,7 @@ use ::sui_sdk::types::base_types::SuiAddress;
 use async_trait::async_trait;
 use hex;
 use hyperlane_core::{
-    to_hex, ChainCommunicationError, ChainResult, ContractLocator, HyperlaneChain, HyperlaneContract, HyperlaneDomain, HyperlaneProvider, Indexer, InterchainGasPaymaster, InterchainGasPayment, LogMeta, H256
+    to_hex, ChainCommunicationError, ChainResult, ContractLocator, HyperlaneChain, HyperlaneContract, HyperlaneDomain, HyperlaneProvider, Indexer, InterchainGasPaymaster, InterchainGasPayment, LogMeta, SequenceIndexer, H256
 };
 use move_core_types::identifier::Identifier;
 use sui_sdk::types::{base_types::ObjectID, digests::TransactionDigest};
@@ -175,5 +175,13 @@ impl Indexer<InterchainGasPayment> for SuiInterchainGasPaymasterIndexer {
         };
 
         Ok(latest_checkpoint as u32)
+    }
+}
+
+#[async_trait]
+impl SequenceIndexer<InterchainGasPayment> for SuiInterchainGasPaymasterIndexer {
+    async fn sequence_and_tip(&self) -> ChainResult<(Option<u32>, u32)> {
+        let tip = self.get_finalized_block_number().await?;
+        Ok((None, tip))
     }
 }

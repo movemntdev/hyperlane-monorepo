@@ -6,18 +6,20 @@
 #![allow(unused_variables)]
 
 mod client;
+mod error;
 mod interchain_gas;
+mod interchain_security_module;
+mod mailbox;
+mod merkle_tree_hook;
+mod multisig_ism;
 mod provider;
-mod validator_announce;
 mod trait_builder;
 mod types;
 mod utils;
-mod mailbox;
-mod error;
-mod merkle_tree_hook;
-mod multisig_ism;
+mod validator_announce;
 
 pub use self::{
-    client::*, interchain_gas::*, provider::*, trait_builder::*, validator_announce::*,
-    utils::*, types::*, mailbox::*, error::*, merkle_tree_hook::*, multisig_ism::*,
+    client::*, error::*, interchain_gas::*, interchain_security_module::*, mailbox::*,
+    merkle_tree_hook::*, multisig_ism::*, provider::*, trait_builder::*, types::*, utils::*,
+    validator_announce::*,
 };
