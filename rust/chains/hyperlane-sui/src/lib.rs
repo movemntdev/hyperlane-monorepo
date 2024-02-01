@@ -14,8 +14,9 @@ mod types;
 mod utils;
 mod mailbox;
 mod error;
+mod merkle_tree_hook;
 
 pub use self::{
     client::*, interchain_gas::*, provider::*, trait_builder::*, validator_announce::*,
-    utils::*, types::*, mailbox::*, error::*,
+    utils::*, types::*, mailbox::*, error::*, merkle_tree_hook::*,
 };

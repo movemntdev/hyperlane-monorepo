@@ -1,15 +1,14 @@
 use std::ops::RangeInclusive;
 
 use crate::{
-    get_filtered_events, ConnectionConf, EventSourceLocator, FilterBuilder, GasPaymentEventData, SuiHpProvider, SuiModule, SuiRpcClient
+    get_filtered_events, ConnectionConf, EventSourceLocator, FilterBuilder, GasPaymentEventData,
+    SuiHpProvider, SuiModule, SuiRpcClient,
 };
 use ::sui_sdk::types::base_types::SuiAddress;
 use async_trait::async_trait;
 use hex;
 use hyperlane_core::{
-    ChainCommunicationError, ChainResult, ContractLocator, HyperlaneChain, HyperlaneContract,
-    HyperlaneDomain, HyperlaneProvider, Indexer, InterchainGasPaymaster, InterchainGasPayment,
-    LogMeta, H256,
+    to_hex, ChainCommunicationError, ChainResult, ContractLocator, HyperlaneChain, HyperlaneContract, HyperlaneDomain, HyperlaneProvider, Indexer, InterchainGasPaymaster, InterchainGasPayment, LogMeta, H256
 };
 use move_core_types::identifier::Identifier;
 use sui_sdk::types::{base_types::ObjectID, digests::TransactionDigest};
@@ -100,8 +99,10 @@ impl EventSourceLocator for SuiInterchainGasPaymasterIndexer {
 
 impl SuiInterchainGasPaymasterIndexer {
     /// Create a new Sui IGP indexer.
-    pub fn new(conf: &ConnectionConf, locator: ContractLocator) -> Self {
-        let package_address = SuiAddress::from_bytes(<[u8; 32]>::from(locator.address)).unwrap();
+    pub fn new(conf: &ConnectionConf, locator: ContractLocator) -> ChainResult<Self> {
+        let package_address = SuiAddress::from_bytes(<[u8; 32]>::from(locator.address))
+            .map_err(ChainCommunicationError::from_other)
+            .unwrap();
         let sui_client = tokio::runtime::Runtime::new()
             .expect("Failed to create runtime")
             .block_on(async { SuiRpcClient::new(conf.url.to_string()).await })
@@ -124,20 +125,20 @@ impl SuiInterchainGasPaymasterIndexer {
         // TODO: quite sure object_id value here is wrong,
         // we need ObjectID of the package not owned objects, temp.
         if let Some(data) = &object.data {
-            return Self {
+            return Ok(Self {
                 sui_client,
                 package_address,
                 module: Some(SuiModule {
                     package: data.object_id.clone(),
                     module: Identifier::new("hg_igps").expect("Failed to create Identifier"),
                 }),
-            };
+            });
         } else {
-            Self {
+            Ok(Self {
                 sui_client,
                 package_address,
                 module: None,
-            }
+            })
         }
     }
 }

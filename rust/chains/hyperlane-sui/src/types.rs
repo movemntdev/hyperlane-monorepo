@@ -1,7 +1,7 @@
 use std::{ops::RangeInclusive, str::FromStr};
 
 use hyperlane_core::{
-    ChainCommunicationError, Decode, HyperlaneMessage, InterchainGasPayment, H256, U256,
+    accumulator::{incremental::IncrementalMerkle, TREE_DEPTH}, ChainCommunicationError, Decode, HyperlaneMessage, InterchainGasPayment, H256, U256
 };
 use move_core_types::language_storage::StructTag;
 use serde::{Deserialize, Serialize};
@@ -35,6 +35,7 @@ pub struct SuiModule {
 pub trait TryIntoPrimitive {
     fn try_into_bool(&self) -> Result<bool, anyhow::Error>;
     fn try_into_h256(&self) -> Result<H256, anyhow::Error>;
+    fn try_into_merkle_tree(&self) -> Result<IncrementalMerkle, anyhow::Error>;
 }
 
 impl TryIntoPrimitive for SuiJsonValue {
@@ -53,6 +54,47 @@ impl TryIntoPrimitive for SuiJsonValue {
             }
             _ => Err(anyhow::anyhow!("Failed to convert to H256")),
         }
+    }
+
+    // important to write exsaustive unit tests for this
+    fn try_into_merkle_tree(&self) -> Result<IncrementalMerkle, anyhow::Error> {
+        let json_value = self.to_json_value();
+
+        if let Value::Object(map) = json_value {
+            let branch = map.get("branch").ok_or_else(|| {
+                anyhow::anyhow!("Failed to get branch from merkle tree json value")
+            })?;
+            let count = map.get("count").ok_or_else(|| {
+                anyhow::anyhow!("Failed to get count from merkle tree json value")
+            })?;
+
+            let branch_vec = branch.as_array().ok_or_else(|| {
+                anyhow::anyhow!("Failed to get branch as array from merkle tree json value")
+            })?;
+            let mut branch_array: [H256; TREE_DEPTH] = [H256::default(); TREE_DEPTH];
+            for (i, vec_u8) in branch_vec.iter().enumerate() {
+                let vec_u8 = vec_u8.as_array().ok_or_else(|| {
+                    anyhow::anyhow!("Failed to get branch as array from merkle tree json value")
+                })?;
+                let bytes: Vec<u8> = vec_u8
+                    .iter()
+                    .map(|u8| u8.as_u64().unwrap() as u8)
+                    .collect();
+                branch_array[1] = H256::from_slice(&bytes);
+            }
+
+            let count_usize = usize::try_from(count.as_u64().unwrap()).map_err(|_| {
+                anyhow::anyhow!("Failed to get count as usize from merkle tree json value")
+            })?;
+
+            Ok(IncrementalMerkle {
+                branch: branch_array,
+                count: count_usize,
+            })
+        } else {
+            Err(anyhow::anyhow!("Failed to convert to IncrementalMerkle"))
+        }
+
     }
 }
 

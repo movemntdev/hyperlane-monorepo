@@ -12,6 +12,7 @@ pub use checkpoint::*;
 pub use log_metadata::*;
 pub use merkle_tree::*;
 pub use message::*;
+pub use serialize::*;
 
 use crate::{Decode, Encode, HyperlaneProtocolError};
 

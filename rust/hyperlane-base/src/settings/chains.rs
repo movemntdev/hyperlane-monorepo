@@ -27,6 +27,7 @@ use crate::{
     CoreMetrics,
 };
 
+
 use super::ChainSigner;
 
 /// A chain setup is a domain ID, an address on that chain (where the mailbox is
@@ -174,7 +175,7 @@ impl ChainConf {
             }
             ChainConnectionConf::Sui(conf) => {
                 let keypair = self.sui_signer().await.context(ctx)?;
-                h_sui::SuiMailbox::new(conf.clone(), locator.clone(), keypair)
+                h_sui::SuiMailbox::new(&conf.clone(), locator.clone(), keypair)
                     .map(|m| Box::new(m) as Box<dyn Mailbox>)
                     .map_err(Into::into)
             }
@@ -257,7 +258,7 @@ impl ChainConf {
             }
             ChainConnectionConf::Sui(conf) => {
                 let indexer = Box::new(h_sui::SuiMailboxIndexer::new(conf, locator)?);
-                Ok(indexer as Box<dyn SequencerIndexer<HyperlaneMessage>>)
+                Ok(indexer as Box<dyn SequenceIndexer<HyperlaneMessage>>)
             }
         }
         .context(ctx)
@@ -342,7 +343,7 @@ impl ChainConf {
                 Ok(paymaster as Box<dyn InterchainGasPaymaster>)
             }
             ChainConnectionConf::Sui(conf) => {
-                let paymaster = Box::new(h_sui::SuiInterchainGasPaymaster::new(conf, &locator)?);
+                let paymaster = Box::new(h_sui::SuiInterchainGasPaymaster::new(conf, &locator));
                 Ok(paymaster as Box<dyn InterchainGasPaymaster>)
             }
         }
@@ -387,7 +388,7 @@ impl ChainConf {
             }
             ChainConnectionConf::Sui(conf) => {
                 let indexer =
-                    Box::new(h_sui::SuiInterchainGasPaymasterIndexer::new(conf, locator)?);
+                    Box::new(h_sui::SuiInterchainGasPaymasterIndexer::new(conf, locator));
                 Ok(indexer as Box<dyn SequenceIndexer<InterchainGasPayment>>)
             }
         }
@@ -471,11 +472,12 @@ impl ChainConf {
             }
             ChainConnectionConf::Sui(conf) => {
                 let keypair = self.sui_signer().await.context("Announcing Validator")?;
-                let va = Box::new(h_sui::SuiValidatorAnnounce::new(conf, locator, keypair));
+                let va = Box::new(h_sui::SuiValidatorAnnounce::new(conf.clone(), locator, keypair));
                 Ok(va as Box<dyn ValidatorAnnounce>)
             }
-            ChainConnectionConf::Sui(_) => {
-                let va = Box::new(h_sui::SuiValidatorAnnounce::new(conf, locator, keypair));
+            ChainConnectionConf::Sui(conf) => {
+                let keypair = self.sui_signer().await.context("Announcing Validator")?;
+                let va = Box::new(h_sui::SuiValidatorAnnounce::new(conf.clone(), locator, keypair));
                 Ok(va as Box<dyn ValidatorAnnounce>)
             }
         }
