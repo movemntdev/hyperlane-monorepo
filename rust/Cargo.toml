@@ -81,7 +81,7 @@ derive_more = "0.99"
 ed25519-dalek = "~1.0"
 enum_dispatch = "0.3"
 eyre = "=0.6.8"
-fastcrypto = { git = "https://github.com/MystenLabs/fastcrypto", rev = "ea66012b860d9dd152abb7f2156275698ee91126" }
+fastcrypto = { git = "https://github.com/MystenLabs/fastcrypto", rev = "c18dc3835f26bc5cf2848ffd32228071fe540071" }
 fixed-hash = "0.8.0"
 fuels = "0.38"
 fuels-code-gen = "0.38"
@@ -329,3 +329,8 @@ version = "=0.32.2"
 branch = "trevor/0.32.2-fork"
 git = "https://github.com/hyperlane-xyz/tendermint-rs.git"
 version = "=0.32.2"
+
+[patch.crates-io.fastcrypto]
+version = "=0.1.7" 
+git = "https://github.com/MystenLabs/fastcrypto" 
+rev = "c18dc3835f26bc5cf2848ffd32228071fe540071"

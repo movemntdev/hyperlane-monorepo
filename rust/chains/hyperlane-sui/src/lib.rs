@@ -17,9 +17,10 @@ mod trait_builder;
 mod types;
 mod utils;
 mod validator_announce;
+mod signers;
 
 pub use self::{
     client::*, error::*, interchain_gas::*, interchain_security_module::*, mailbox::*,
     merkle_tree_hook::*, multisig_ism::*, provider::*, trait_builder::*, types::*, utils::*,
-    validator_announce::*,
+    validator_announce::*, signers::*,
 };

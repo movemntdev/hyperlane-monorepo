@@ -721,7 +721,7 @@ impl ChainConf {
         self.signer().await
     }
 
-    async fn sui_signer(&self) -> Result<Option<h_cosmos::Signer>> {
+    async fn sui_signer(&self) -> Result<Option<h_sui::Signer>> {
         // Need to implement missing signers.rs see Cosmos signers.rs
         // change return type to h_sui::Signer / h_sui::Keypair
         self.signer().await
