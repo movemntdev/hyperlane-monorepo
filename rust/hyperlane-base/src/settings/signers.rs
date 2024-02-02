@@ -163,3 +163,20 @@ impl ChainSigner for hyperlane_cosmos::Signer {
         self.address.clone()
     }
 }
+
+#[async_trait]
+impl BuildableWithSignerConf for hyperlane_sui::Signer {
+    async fn build(conf: &SignerConf) -> Result<Self, Report> {
+        if let SignerConf::HexKey { key } = conf {
+            Ok(hyperlane_sui::Signer::new(&key.to_string())?)
+        } else {
+            bail!(format!("{conf:?} key is not supported by sui"));
+        }
+    }
+}
+
+impl ChainSigner for hyperlane_sui::Signer {
+    fn address_string(&self) -> String {
+        self.address.to_string()
+    }
+}

@@ -7,7 +7,7 @@ use sui_sdk::rpc_types::SuiObjectDataOptions;
 use tracing::info;
 use tracing::{instrument, warn};
 
-use crate::{AddressFormatter, ConnectionConf, SuiHpProvider, SuiRpcClient};
+use crate::{AddressFormatter, ConnectionConf, Signer, SuiHpProvider, SuiRpcClient};
 use hyperlane_core::{
     Announcement, ChainCommunicationError, ChainResult, ContractLocator, HyperlaneChain,
     HyperlaneContract, HyperlaneDomain, HyperlaneProvider, SignedType, TxOutcome,
@@ -26,7 +26,7 @@ pub struct SuiValidatorAnnounce {
     package_address: SuiAddress,
     sui_client: SuiRpcClient,
     client_url: String,
-    payer: Option<Keypair>,
+    signer: Option<Signer>,
     domain: HyperlaneDomain,
 }
 
@@ -35,7 +35,7 @@ impl SuiValidatorAnnounce {
     pub async fn new(
         conf: ConnectionConf,
         locator: ContractLocator<'_>,
-        payer: Option<Keypair>,
+        signer: Option<Signer>,
     ) -> Result<Self, Error> {
         let sui_client = SuiRpcClient::new(conf.url.to_string()).await?;
         let package_address = SuiAddress::from_bytes(<[u8; 32]>::from(locator.address)).unwrap();
@@ -43,7 +43,7 @@ impl SuiValidatorAnnounce {
             package_address,
             sui_client,
             client_url: conf.url.to_string().clone(),
-            payer,
+            signer,
             domain: locator.domain.clone(),
         })
     }
@@ -59,7 +59,7 @@ impl SuiValidatorAnnounce {
         let serialized_signature: [u8; 65] = announcement.signature.into();
 
         let payer = self
-            .payer
+            .signer
             .as_ref()
             .ok_or_else(|| ChainCommunicationError::SignerUnavailable)?;
 

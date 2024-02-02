@@ -49,4 +49,4 @@ impl FromRawConf<DeprecatedRawConnectionConf> for ConnectionConf {
 
 #[derive(thiserror::Error, Debug)]
 #[error(transparent)]
-struct AptosNewConnectionError(#[from] anyhow::Error);
+struct SuiNewConnectionError(#[from] anyhow::Error);

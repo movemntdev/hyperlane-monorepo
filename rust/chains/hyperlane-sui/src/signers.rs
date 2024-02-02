@@ -9,29 +9,25 @@ use sui_sdk::types::{
     crypto::{PublicKey, SuiKeyPair},
 };
 
-type PrivateKey = PublicKey;
-
-#[derive(Clone, Debug)]
+/// A signer is a key pair that can sign transactions.
+/// For now we only support ED25519.
+#[derive(Debug)]
 pub struct Signer {
-    /// public key
-    pub public_key: PublicKey,
-    pub address: String,
-    private_key: PrivateKey,
+    /// Sui address
+    pub address: SuiAddress,
+    /// SuiKeyPair
+    pub key_pair: SuiKeyPair,
 }
 
 impl Signer {
     /// Derive a signer from an ED25519 private key.
     pub fn new(private_key: &str) -> ChainResult<Self> {
-        // TODO remove unwraps.
-        let k = SuiKeyPair::Ed25519(
-            Ed25519KeyPair::from_bytes(&Base64::decode(private_key).unwrap()).unwrap(),
-        );
-        let priv_k = k.public();
-
+        //TODO: remove unrwaps & expects
+        let bytes = Base64::decode(private_key).expect("Invalid base64");
+        let k = SuiKeyPair::Ed25519(Ed25519KeyPair::from_bytes(&bytes).unwrap());
         Ok(Self {
-            public_key: PublicKey::Ed25519(pk.to_vec()),
-            private_key: priv_k,
-            address: SuiAddress::from(&priv_k),
+            address: SuiAddress::from(&k.public()),
+            key_pair: k,
         })
     }
 }

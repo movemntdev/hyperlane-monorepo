@@ -134,5 +134,9 @@ pub fn build_connection_conf(
             ChainConnectionConf::Sealevel(h_sealevel::ConnectionConf { url: url.clone() })
         }),
         HyperlaneDomainProtocol::Cosmos => build_cosmos_connection_conf(rpcs, chain, err),
+        HyperlaneDomainProtocol::Sui => rpcs
+            .iter()
+            .next()
+            .map(|url| ChainConnectionConf::Sui(h_sui::ConnectionConf { url: url.clone() })),
     }
 }

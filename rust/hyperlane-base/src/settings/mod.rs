@@ -76,6 +76,7 @@ mod envs {
     pub use hyperlane_ethereum as h_eth;
     pub use hyperlane_fuel as h_fuel;
     pub use hyperlane_sealevel as h_sealevel;
+    pub use hyperlane_sui as h_sui;
 }
 
 /// AWS Credentials provider.

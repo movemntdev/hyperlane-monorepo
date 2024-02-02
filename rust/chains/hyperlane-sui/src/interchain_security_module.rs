@@ -10,21 +10,21 @@ use solana_sdk::signature::Keypair;
 use sui_sdk::{json::SuiJsonValue, types::base_types::SuiAddress};
 
 use crate::{
-    move_view_call, AddressFormatter, ConnectionConf, SuiHpProvider, SuiRpcClient, TryIntoPrimitive,
+    move_view_call, AddressFormatter, ConnectionConf, Signer, SuiHpProvider, SuiRpcClient, TryIntoPrimitive
 };
 
 #[derive(Debug)]
 pub struct SuiInterchainSecurityModule {
     sui_client: SuiRpcClient,
     package_address: SuiAddress,
-    payer: Option<Keypair>,
+    signer: Option<Signer>,
     domain: HyperlaneDomain,
     rest_url: String,
 }
 
 impl SuiInterchainSecurityModule {
     /// Create a new Sui Interchain Security Module.
-    pub fn new(conf: &ConnectionConf, locator: ContractLocator, payer: Option<Keypair>) -> Self {
+    pub fn new(conf: &ConnectionConf, locator: ContractLocator, signer: Option<Signer>) -> Self {
         let package_address = SuiAddress::from_bytes(<[u8; 32]>::from(locator.address)).unwrap();
         let sui_client = tokio::runtime::Runtime::new()
             .expect("Failed to create runtime")
@@ -35,7 +35,7 @@ impl SuiInterchainSecurityModule {
             rest_url: conf.url.to_string(),
             sui_client,
             package_address,
-            payer,
+            signer,
         }
     }
 }

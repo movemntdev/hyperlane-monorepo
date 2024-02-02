@@ -1,10 +1,11 @@
 use crate::{
     AddressFormatter, ConvertFromDryRun, ExecuteMode, GasPaymentEventData, HyperlaneSuiError,
-    SuiModule, SuiRpcClient, TxSpecificData,
+    Signer, SuiModule, SuiRpcClient, TxSpecificData,
 };
 use anyhow::{Chain, Error};
 use fastcrypto::encoding::Encoding;
 use fastcrypto::hash::HashFunction;
+use fastcrypto::traits::Signer as _;
 use hyperlane_core::{
     ChainCommunicationError, ChainResult, InterchainGasPayment, LogMeta, H256, H512, U256,
 };
@@ -85,9 +86,9 @@ where
             address: event.sender.to_bytes().into(), // Should this be the sender?
             block_number: 0,                         // No block numbers in Sui
             block_hash: H256::zero(),                // No block hash in Sui
-            transaction_id: H512::zero(), // fix dummy for now
-            transaction_index: 0,    // Not sure what this val should be,
-            log_index: U256::zero(), // No block structure in Sui
+            transaction_id: H512::zero(),            // fix dummy for now
+            transaction_index: 0,                    // Not sure what this val should be,
+            log_index: U256::zero(),                 // No block structure in Sui
         };
         let gas_payment_event_data: S = event.try_into()?;
         messages.push((gas_payment_event_data.try_into()?, log_meta));
@@ -183,7 +184,7 @@ pub async fn move_view_call(
 
 pub async fn move_mutate_call(
     sui_client: &SuiRpcClient,
-    payer_keystore: FileBasedKeystore,
+    signer: &Signer,
     package_id: ObjectID,
     module_name: String,
     function_name: String,
@@ -191,11 +192,10 @@ pub async fn move_mutate_call(
     args: Vec<SuiJsonValue>,
     execute: ExecuteMode,
 ) -> ChainResult<SuiTransactionBlockResponse> {
-    let signer_account = payer_keystore.addresses()[0];
     let call = sui_client
         .transaction_builder()
         .move_call(
-            signer_account,
+            signer.address,
             package_id,
             &module_name,
             &function_name,
@@ -206,9 +206,16 @@ pub async fn move_mutate_call(
         )
         .await
         .expect("Failed to build move call");
-    let signature = payer_keystore
-        .sign_secure(&signer_account, &call, Intent::sui_transaction())
-        .expect("Failed to sign message");
+
+    //prepare for signing
+    let intent_message = IntentMessage::new(Intent::sui_transaction(), call.clone());
+    let raw_tx = bcs::to_bytes(&intent_message).expect("Failed to serialize intent message");
+    let mut hasher = DefaultHash::new();
+    hasher.update(&raw_tx.clone());
+    let digest = hasher.finalize().digest;
+
+    // sign
+    let signature = signer.key_pair.sign(&digest);
 
     let response: SuiTransactionBlockResponse = match execute {
         ExecuteMode::LiveNetwork => sui_client

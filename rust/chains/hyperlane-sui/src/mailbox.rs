@@ -3,9 +3,7 @@ use std::{collections::HashMap, num::NonZeroU64, ops::RangeInclusive, str::FromS
 use async_trait::async_trait;
 use base64::write;
 use hyperlane_core::{
-    ChainCommunicationError, ChainResult, ContractLocator, Decode, Encode, HyperlaneAbi,
-    HyperlaneChain, HyperlaneContract, HyperlaneDomain, HyperlaneMessage, HyperlaneProvider,
-    Indexer, LogMeta, Mailbox, SequenceIndexer, TxCostEstimate, TxOutcome, H256, H512, U256,
+    ChainCommunicationError, ChainResult, ContractLocator, Decode, Encode, FixedPointNumber, HyperlaneAbi, HyperlaneChain, HyperlaneContract, HyperlaneDomain, HyperlaneMessage, HyperlaneProvider, Indexer, LogMeta, Mailbox, SequenceIndexer, TxCostEstimate, TxOutcome, H256, H512, U256
 };
 use move_core_types::{identifier::Identifier, language_storage::StructTag};
 use shared_crypto::intent::Intent;
@@ -21,13 +19,17 @@ use tracing::{info, instrument};
 use url::Url;
 
 use crate::{
-    convert_hex_string_to_h256, convert_keypair_to_sui_keystore, get_filtered_events, move_mutate_call, move_view_call, send_owned_objects_request, total_gas, AddressFormatter, ConnectionConf, DispatchEventData, EventSourceLocator, ExecuteMode, FilterBuilder, GasPaymentEventData, MsgProcessEventData, SuiHpProvider, SuiModule, SuiRpcClient, TryIntoPrimitive, GAS_UNIT_PRICE
+    convert_hex_string_to_h256, convert_keypair_to_sui_keystore, get_filtered_events,
+    move_mutate_call, move_view_call, send_owned_objects_request, total_gas, AddressFormatter,
+    ConnectionConf, DispatchEventData, EventSourceLocator, ExecuteMode, FilterBuilder,
+    GasPaymentEventData, MsgProcessEventData, Signer, SuiHpProvider, SuiModule, SuiRpcClient,
+    TryIntoPrimitive, GAS_UNIT_PRICE,
 };
 
 /// A reference to a Mailbox contract on some Sui chain
 pub struct SuiMailbox {
     pub(crate) domain: HyperlaneDomain,
-    payer: Option<Keypair>,
+    payer: Option<Signer>,
     pub(crate) sui_client: SuiRpcClient,
     pub(crate) packages_address: SuiAddress,
     rest_url: Url,
@@ -38,7 +40,7 @@ impl SuiMailbox {
     pub fn new(
         conf: &ConnectionConf,
         locator: ContractLocator,
-        payer: Option<Keypair>,
+        payer: Option<Signer>,
     ) -> ChainResult<Self> {
         let package_address = SuiAddress::from_bytes(<[u8; 32]>::from(locator.address)).unwrap();
         let sui_client = tokio::runtime::Runtime::new()
@@ -175,21 +177,15 @@ impl Mailbox for SuiMailbox {
             .get_owned_objects(recipient, None, None, None)
             .await
             .expect("Failed to get owned objects");
-        let object = objects
-            .data
-            .first()
-            .expect("Failed to get owned objects");
+        let object = objects.data.first().expect("Failed to get owned objects");
 
         let mut encoded_message = vec![];
         message.write_to(&mut encoded_message).unwrap();
 
-        let payer_keypair = self
+        let signer = self
             .payer
             .as_ref()
             .ok_or_else(|| ChainCommunicationError::SignerUnavailable)?;
-        let payer_keystore = convert_keypair_to_sui_keystore(&self.sui_client, payer_keypair)
-            .await
-            .expect("Failed to convert keypair to SuiAccount");
         let recipient_module_name = self
             .fetch_package_name(&recipient)
             .await
@@ -197,7 +193,7 @@ impl Mailbox for SuiMailbox {
 
         let response = move_mutate_call(
             &self.sui_client,
-            payer_keystore,
+            signer,
             object.data.as_ref().unwrap().object_id, //check this not sure if this ID correlates to the module ID we want
             bcs::from_bytes(&recipient_module_name).unwrap(),
             "handle_message".to_string(),
@@ -222,7 +218,7 @@ impl Mailbox for SuiMailbox {
         Ok(TxOutcome {
             transaction_id: H512::from(tx_hash),
             executed: has_success,
-            gas_price: U256::from(GAS_UNIT_PRICE),
+            gas_price: FixedPointNumber::from(GAS_UNIT_PRICE),
             gas_used: U256::from(total_gas(response)),
         })
     }
@@ -240,28 +236,22 @@ impl Mailbox for SuiMailbox {
             .get_owned_objects(recipient, None, None, None)
             .await
             .expect("Failed to get owned objects");
-        let object = objects
-            .data
-            .first()
-            .expect("Failed to get owned objects");
+        let object = objects.data.first().expect("Failed to get owned objects");
 
         let mut encoded_message = vec![];
         message.write_to(&mut encoded_message).unwrap();
 
-        let payer_keypair = self
-            .payer
-            .as_ref()
-            .ok_or_else(|| ChainCommunicationError::SignerUnavailable)?;
-        let payer_keystore = convert_keypair_to_sui_keystore(&self.sui_client, payer_keypair)
-            .await
-            .expect("Failed to convert keypair to SuiAccount");
         let recipient_module_name = self
             .fetch_package_name(&recipient)
             .await
             .expect("Failed to fetch package name");
+        let signer = self
+            .payer
+            .as_ref()
+            .ok_or_else(|| ChainCommunicationError::SignerUnavailable)?;
         let response = move_mutate_call(
             &self.sui_client,
-            payer_keystore,
+            &signer,
             object.data.as_ref().unwrap().object_id, //check this not sure if this ID correlates to the module ID we want
             bcs::from_bytes(&recipient_module_name).unwrap(),
             "handle_message".to_string(),
@@ -316,6 +306,7 @@ impl EventSourceLocator for SuiMailboxIndexer {
 }
 
 impl SuiMailboxIndexer {
+    /// Create a new SuiMailboxIndexer
     pub fn new(conf: &ConnectionConf, locator: ContractLocator) -> ChainResult<Self> {
         let sui_client = tokio::runtime::Runtime::new()
             .expect("Failed to create runtime")

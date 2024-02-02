@@ -11,14 +11,13 @@ use sui_sdk::{
 };
 
 use crate::{
-    move_view_call, AddressFormatter, ConnectionConf, SuiHpProvider, SuiRpcClient,
-    TryIntoPrimitive, Validators,
+    move_view_call, AddressFormatter, ConnectionConf, Signer, SuiHpProvider, SuiRpcClient, TryIntoPrimitive, Validators
 };
 
 ///A reference to a MultsigIsm module on a Sui Chain.
 #[derive(Debug)]
 pub struct SuiMultisigISM {
-    payer: Option<Keypair>,
+    signer: Option<Signer>, //field never read
     domain: HyperlaneDomain,
     sui_client: SuiRpcClient,
     package_address: SuiAddress,
@@ -27,7 +26,7 @@ pub struct SuiMultisigISM {
 
 impl SuiMultisigISM {
     ///Create a new Sui Multisig ISM.
-    pub fn new(conf: &ConnectionConf, locator: ContractLocator, payer: Option<Keypair>) -> Self {
+    pub fn new(conf: &ConnectionConf, locator: ContractLocator, signer: Option<Signer>) -> Self {
         let package_address = SuiAddress::from_bytes(<[u8; 32]>::from(locator.address)).unwrap();
         let sui_client = tokio::runtime::Runtime::new()
             .expect("Failed to create runtime")
@@ -38,7 +37,7 @@ impl SuiMultisigISM {
             rest_url: conf.url.to_string(),
             sui_client,
             package_address,
-            payer,
+            signer,
         }
     }
 }
