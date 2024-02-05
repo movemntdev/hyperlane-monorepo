@@ -2,8 +2,17 @@
 
 [move]
 version = 0
-manifest_digest = "73E710EE16CE4C6934D247CFA92A85B5B8BC515159CC875B7EDEE0D20294ED29"
-deps_digest = "F8BBB0CCB2491CA29A3DF03D6F92277A4F3574266507ACD77214D37ECA3F3082"
+manifest_digest = "BC2CF89C0C56F394905B4FEC21841974546A9E0CAED3BB8C29FFD99A46708D3B"
+deps_digest = "3C4103934B1E040BB6B23F1D610B4EF9F2F1166A50A104EADCF77467C004C600"
+
+dependencies = [
+  { name = "HyperlaneLibrary" },
+  { name = "Sui" },
+]
+
+[[move.package]]
+name = "HyperlaneLibrary"
+source = { local = "../library" }
 
 dependencies = [
   { name = "Sui" },

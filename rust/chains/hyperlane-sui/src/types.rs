@@ -308,6 +308,10 @@ pub trait FilterBuilder: EventSourceLocator {
                 package: self.module().package,
                 module: self.module().module.clone(),
             },
+            ///TODO range start and range are currently blockheight numbers. 
+            /// We need to convert them to timestamp
+            /// use get_latest_checkpoint_sequnce_number
+            /// https://mystenlabs.github.io/sui/sui_sdk/apis/struct.ReadApi.html#method.get_latest_checkpoint_sequence_number
             EventFilter::TimeRange {
                 start_time: *range.start() as u64,
                 end_time: *range.end() as u64,

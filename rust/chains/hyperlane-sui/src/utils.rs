@@ -51,7 +51,7 @@ pub fn convert_hex_string_to_h256(addr: &str) -> Result<H256, String> {
     H256::from_str(&formated_addr).map_err(|e| e.to_string())
 }
 
-// TODO: Check this fn
+///Get events from the chain with the EventFilter
 pub async fn get_filtered_events<T, S>(
     sui_client: &SuiRpcClient,
     module: &SuiModule,
@@ -182,6 +182,7 @@ pub async fn move_view_call(
     }
 }
 
+/// Make a Move call that mutates chain state.
 pub async fn move_mutate_call(
     sui_client: &SuiRpcClient,
     signer: &Signer,

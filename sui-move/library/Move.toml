@@ -1,9 +1,10 @@
 [package]
 name = "HyperlaneLibrary"
 version = "0.0.1"
+published-at = "0xb5739c742bf153ab7f45a962da53cea2a0b88123f205f9c8346c3564a3c0615d"
 
 [dependencies]
 Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "framework/testnet" }
 
 [addresses]
-hp_library = "0x22"
+hp_library = "0x0"

@@ -27,3 +27,14 @@ impl std::fmt::Debug for SuiRpcClient {
         f.write_str("SuiRpcClient { ... }")
     }
 }
+
+mod tests {
+    use super::*;
+    use std::str::FromStr;
+    use url::Url;
+
+    #[tokio::test]
+    async fn test_new() {
+        let rpc_endpoint = "https://fullnode.testnet.sui.io:443";
+        
+
