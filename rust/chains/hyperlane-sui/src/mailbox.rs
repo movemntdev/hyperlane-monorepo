@@ -45,7 +45,7 @@ impl SuiMailbox {
         let package_address = SuiAddress::from_bytes(<[u8; 32]>::from(locator.address)).unwrap();
         let sui_client = tokio::runtime::Runtime::new()
             .expect("Failed to create runtime")
-            .block_on(async { SuiRpcClient::new(conf.url.to_string()).await })
+            .block_on(async { SuiRpcClient::new().await })
             .expect("Failed to create SuiRpcClient");
         Ok(Self {
             domain: locator.domain.clone(),
@@ -289,19 +289,19 @@ impl Mailbox for SuiMailbox {
 pub struct SuiMailboxIndexer {
     mailbox: SuiMailbox,
     sui_client: SuiRpcClient,
-    package_address: SuiAddress,
-    module: Option<SuiModule>,
+    package: SuiAddress, // Might this be ObjectID?
+    identifier: Option<SuiModule>,
 }
 
 impl FilterBuilder for SuiMailboxIndexer {}
 
 impl EventSourceLocator for SuiMailboxIndexer {
-    fn package_address(&self) -> SuiAddress {
-        self.package_address
+    fn package(&self) -> SuiAddress {
+        self.package
     }
 
-    fn module(&self) -> &SuiModule {
-        self.module.as_ref().unwrap() // borrow the contents of self.module instead of moving it out
+    fn identifier(&self) -> &SuiModule {
+        self.identifier.as_ref().unwrap() // borrow the contents of self.module instead of moving it ou
     }
 }
 
@@ -310,16 +310,17 @@ impl SuiMailboxIndexer {
     pub fn new(conf: &ConnectionConf, locator: ContractLocator) -> ChainResult<Self> {
         let sui_client = tokio::runtime::Runtime::new()
             .expect("Failed to create runtime")
-            .block_on(async { SuiRpcClient::new(conf.url.to_string()).await })
+            .block_on(async { SuiRpcClient::new().await })
             .expect("Failed to create SuiRpcClient");
-        let package_address = SuiAddress::from_bytes(<[u8; 32]>::from(locator.address)).unwrap();
+        // This could be of type ObjectID instead I think better.
+        let package = SuiAddress::from_bytes(<[u8; 32]>::from(locator.address)).unwrap();
         let mailbox = SuiMailbox::new(conf, locator, None)?;
 
         Ok(Self {
             mailbox,
             sui_client,
-            package_address,
-            module: None, // TODO: Get the module info from the chain add to locator
+            package,
+            identifier: None, // TODO: Get the module info from the chain add to locator
         })
     }
 
@@ -356,7 +357,7 @@ impl Indexer<HyperlaneMessage> for SuiMailboxIndexer {
     ) -> ChainResult<Vec<(HyperlaneMessage, LogMeta)>> {
         get_filtered_events::<HyperlaneMessage, GasPaymentEventData>(
             &self.sui_client,
-            self.module(),
+            self.identifier(),
             self.build_filter("DispatchEvent", range),
         )
         .await
@@ -372,7 +373,7 @@ impl Indexer<H256> for SuiMailboxIndexer {
     async fn fetch_logs(&self, range: RangeInclusive<u32>) -> ChainResult<Vec<(H256, LogMeta)>> {
         get_filtered_events::<H256, GasPaymentEventData>(
             &self.sui_client,
-            self.module(),
+            self.identifier(),
             self.build_filter("ProcessEvent", range),
         )
         .await

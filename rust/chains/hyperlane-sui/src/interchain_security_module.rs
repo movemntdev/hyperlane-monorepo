@@ -28,7 +28,7 @@ impl SuiInterchainSecurityModule {
         let package_address = SuiAddress::from_bytes(<[u8; 32]>::from(locator.address)).unwrap();
         let sui_client = tokio::runtime::Runtime::new()
             .expect("Failed to create runtime")
-            .block_on(async { SuiRpcClient::new(conf.url.to_string()).await })
+            .block_on(async { SuiRpcClient::new().await })
             .expect("Failed to create SuiRpcClient");
         Self {
             domain: locator.domain.clone(),

@@ -61,9 +61,18 @@ where
     S: TryFrom<SuiEvent> + TxSpecificData + TryInto<T> + Clone,
     ChainCommunicationError: From<<S as TryFrom<SuiEvent>>::Error> + From<<S as TryInto<T>>::Error>,
 {
+    let identifier = module.ident.clone();
     let events_page = sui_client
         .event_api()
-        .query_events(filter, None, None, true)
+        .query_events(
+            EventFilter::MoveModule {
+                package: module.package,
+                module: identifier,
+            },
+            None,
+            None,
+            true,
+        )
         .await
         .map_err(|e| {
             ChainCommunicationError::SuiObjectReadError(format!(
@@ -72,8 +81,11 @@ where
             ))
         })?;
 
+    println!("events_page: {:?}", events_page.data.len());
+
     let mut messages: Vec<(T, LogMeta)> = Vec::new();
     for event in events_page.data.into_iter() {
+        println!("event: {:?}", event);
         let tx = sui_client
             .read_api()
             .get_transaction_with_options(
@@ -92,7 +104,9 @@ where
         };
         let gas_payment_event_data: S = event.try_into()?;
         messages.push((gas_payment_event_data.try_into()?, log_meta));
+        println!("messaged pushed");
     }
+    println!("messages: {:?}", messages.len());
     Ok(messages)
 }
 

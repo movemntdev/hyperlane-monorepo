@@ -1,6 +1,7 @@
 #![allow(missing_docs)]
 
 use std::{
+    collections::HashMap,
     fmt::{Debug, Formatter},
     hash::{Hash, Hasher},
 };
@@ -23,6 +24,8 @@ pub struct Balance(pub num::BigInt);
 pub struct ContractLocator<'a> {
     pub domain: &'a HyperlaneDomain,
     pub address: H256,
+    /// Only needed for Sui chain.
+    pub modules: Option<HashMap<String, String>>,
 }
 
 #[cfg(feature = "strum")]

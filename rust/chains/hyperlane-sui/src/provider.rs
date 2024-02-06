@@ -19,7 +19,7 @@ pub struct SuiHpProvider {
 impl SuiHpProvider {
     /// Create a new Sui provider.
     pub async fn new(domain: HyperlaneDomain, rest_url: String) -> Self {
-        let sui_client = SuiRpcClient::new(rest_url.clone())
+        let sui_client = SuiRpcClient::new()
             .await
             .expect("Failed to create SuiRpcClient");
         Self {

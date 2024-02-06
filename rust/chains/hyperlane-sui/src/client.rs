@@ -1,15 +1,12 @@
 use sui_sdk::{SuiClientBuilder, SuiClient};
-use std::str::FromStr;
-use url::Url;
 
 /// Sui RPC client
 pub struct SuiRpcClient(SuiClient);
 impl SuiRpcClient {
     /// Create a new aptos rpc client from node url
-    pub async fn new(rpc_endpoint: String) -> Result<Self, anyhow::Error> {
-      let client = SuiClientBuilder::default()
-        .build(Url::from_str(&rpc_endpoint).unwrap())
-        .await?;
+    pub async fn new() -> Result<Self, anyhow::Error> {
+      // TODO: feature flag for testnet/mainnet
+      let client = SuiClientBuilder::default().build_testnet().await?;
       Ok(Self(client))
     }
 }
@@ -29,12 +26,11 @@ impl std::fmt::Debug for SuiRpcClient {
 }
 
 mod tests {
-    use super::*;
-    use std::str::FromStr;
-    use url::Url;
+    use crate::SuiRpcClient;
 
     #[tokio::test]
-    async fn test_new() {
-        let rpc_endpoint = "https://fullnode.testnet.sui.io:443";
-        
+    async fn test_creates_new_client() {
+        let client = SuiRpcClient::new().await.unwrap();
+    }
+}
 

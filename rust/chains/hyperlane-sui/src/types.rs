@@ -32,7 +32,7 @@ pub enum ExecuteMode {
 #[derive(Debug)]
 pub struct SuiModule {
     pub package: ObjectID,
-    pub module: Identifier,
+    pub ident: Identifier,
 }
 
 pub trait TryIntoPrimitive {
@@ -188,6 +188,16 @@ pub struct GasPaymentEventData {
     pub event_id: EventID,
 }
 
+impl TryFrom<SuiEvent> for GasPaymentEventData {
+    type Error = ChainCommunicationError;
+    fn try_from(event: SuiEvent) -> Result<Self, Self::Error> {
+        let contents = bcs::from_bytes::<GasPaymentEventData>(&event.bcs)
+            .map_err(ChainCommunicationError::from_other)
+            .unwrap();
+        Ok(contents)
+    }
+}
+
 impl From<GasPaymentEventData> for HyperlaneMessage {
     fn from(event_data: GasPaymentEventData) -> Self {
         HyperlaneMessage {
@@ -208,15 +218,7 @@ impl From<GasPaymentEventData> for H256 {
     }
 }
 
-impl TryFrom<SuiEvent> for GasPaymentEventData {
-    type Error = ChainCommunicationError;
-    fn try_from(event: SuiEvent) -> Result<Self, Self::Error> {
-        let contents = bcs::from_bytes::<GasPaymentEventData>(&event.bcs)
-            .map_err(ChainCommunicationError::from_other)
-            .unwrap();
-        Ok(contents)
-    }
-}
+
 
 impl From<GasPaymentEventData> for InterchainGasPayment {
     fn from(event_data: GasPaymentEventData) -> Self {
@@ -295,18 +297,18 @@ pub struct MsgProcessEventData {
 }
 
 pub trait EventSourceLocator {
-    fn package_address(&self) -> SuiAddress;
-    fn module(&self) -> &SuiModule;
+    fn package(&self) -> SuiAddress;
+    fn identifier(&self) -> &SuiModule;
 }
 
 pub trait FilterBuilder: EventSourceLocator {
     /// Build a filter for the event
     fn build_filter(&self, event_name: &str, range: RangeInclusive<u32>) -> EventFilter {
         EventFilter::All(vec![
-            EventFilter::Sender(self.package_address()),
+            EventFilter::Sender(self.package()),
             EventFilter::MoveEventModule {
-                package: self.module().package,
-                module: self.module().module.clone(),
+                package: self.package().package,
+                module: self.identifier().ident.clone(),
             },
             ///TODO range start and range are currently blockheight numbers. 
             /// We need to convert them to timestamp
@@ -317,8 +319,8 @@ pub trait FilterBuilder: EventSourceLocator {
                 end_time: *range.end() as u64,
             },
             EventFilter::MoveEventType(StructTag {
-                address: self.package_address().into(),
-                module: self.module().module.clone(),
+                address: self.package().into(),
+                module: self.identifier().ident.clone(),
                 name: Identifier::new(event_name).expect("Failed to create Identifier"),
                 type_params: vec![],
             }),
