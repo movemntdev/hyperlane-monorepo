@@ -243,6 +243,7 @@ mod tests {
             .unwrap()
             .block_on(indexer.fetch_logs(RangeInclusive::new(0, 10)))
             .unwrap();
-        println!("{:?}", logs);
+    
+        assert_eq!(logs.len(), 0);
     }
 }

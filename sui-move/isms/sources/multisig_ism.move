@@ -25,7 +25,7 @@ module hp_isms::multisig_ism {
   //
   const ERROR_INVALID_OWNER: u64 = 1;
   const ERROR_THRESHOLD_NOT_MET: u64 = 2;
-  const ERROR_INVALID_THRESHOLD: u64 = 33;
+  const ERROR_INVALID_THRESHOLD: u64 = 3;
 
   /// Admin Capability
   struct AdminCap has key, store {
