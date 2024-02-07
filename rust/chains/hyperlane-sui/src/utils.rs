@@ -1,6 +1,6 @@
 use crate::{
     AddressFormatter, ConvertFromDryRun, ExecuteMode, GasPaymentEventData, HyperlaneSuiError,
-    Signer, SuiModule, SuiRpcClient, TxSpecificData,
+    Signer, SuiRpcClient, TxSpecificData,
 };
 use anyhow::{Chain, Error};
 use fastcrypto::encoding::Encoding;
@@ -54,21 +54,18 @@ pub fn convert_hex_string_to_h256(addr: &str) -> Result<H256, String> {
 ///Get events from the chain with the EventFilter
 pub async fn get_filtered_events<T, S>(
     sui_client: &SuiRpcClient,
-    module: &SuiModule,
+    package: ObjectID,
+    module: Identifier,
     filter: EventFilter,
 ) -> ChainResult<Vec<(T, LogMeta)>>
 where
     S: TryFrom<SuiEvent> + TxSpecificData + TryInto<T> + Clone,
     ChainCommunicationError: From<<S as TryFrom<SuiEvent>>::Error> + From<<S as TryInto<T>>::Error>,
 {
-    let identifier = module.ident.clone();
     let events_page = sui_client
         .event_api()
         .query_events(
-            EventFilter::MoveModule {
-                package: module.package,
-                module: identifier,
-            },
+            EventFilter::MoveModule { package, module },
             None,
             None,
             true,

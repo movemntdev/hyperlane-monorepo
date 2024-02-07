@@ -3,7 +3,10 @@ use std::{collections::HashMap, num::NonZeroU64, ops::RangeInclusive, str::FromS
 use async_trait::async_trait;
 use base64::write;
 use hyperlane_core::{
-    ChainCommunicationError, ChainResult, ContractLocator, Decode, Encode, FixedPointNumber, HyperlaneAbi, HyperlaneChain, HyperlaneContract, HyperlaneDomain, HyperlaneMessage, HyperlaneProvider, Indexer, LogMeta, Mailbox, SequenceIndexer, TxCostEstimate, TxOutcome, H256, H512, U256
+    ChainCommunicationError, ChainResult, ContractLocator, Decode, Encode, FixedPointNumber,
+    HyperlaneAbi, HyperlaneChain, HyperlaneContract, HyperlaneDomain, HyperlaneMessage,
+    HyperlaneProvider, Indexer, LogMeta, Mailbox, SequenceIndexer, TxCostEstimate, TxOutcome, H256,
+    H512, U256,
 };
 use move_core_types::{identifier::Identifier, language_storage::StructTag};
 use shared_crypto::intent::Intent;
@@ -13,7 +16,11 @@ use sui_keys::keystore::{AccountKeystore, Keystore};
 use sui_sdk::{
     json::{MoveTypeLayout, SuiJsonValue},
     rpc_types::{EventFilter, SuiTransactionBlockEffectsAPI},
-    types::{base_types::SuiAddress, execution, parse_sui_struct_tag, transaction::CallArg},
+    types::{
+        base_types::{ObjectID, SuiAddress},
+        execution, parse_sui_struct_tag,
+        transaction::CallArg,
+    },
 };
 use tracing::{info, instrument};
 use url::Url;
@@ -22,7 +29,7 @@ use crate::{
     convert_hex_string_to_h256, convert_keypair_to_sui_keystore, get_filtered_events,
     move_mutate_call, move_view_call, send_owned_objects_request, total_gas, AddressFormatter,
     ConnectionConf, DispatchEventData, EventSourceLocator, ExecuteMode, FilterBuilder,
-    GasPaymentEventData, MsgProcessEventData, Signer, SuiHpProvider, SuiModule, SuiRpcClient,
+    GasPaymentEventData, MsgProcessEventData, Signer, SuiHpProvider, SuiRpcClient,
     TryIntoPrimitive, GAS_UNIT_PRICE,
 };
 
@@ -289,19 +296,19 @@ impl Mailbox for SuiMailbox {
 pub struct SuiMailboxIndexer {
     mailbox: SuiMailbox,
     sui_client: SuiRpcClient,
-    package: SuiAddress, // Might this be ObjectID?
-    identifier: Option<SuiModule>,
+    package: ObjectID,
+    identifier: Identifier,
 }
 
 impl FilterBuilder for SuiMailboxIndexer {}
 
 impl EventSourceLocator for SuiMailboxIndexer {
-    fn package(&self) -> SuiAddress {
+    fn package(&self) -> ObjectID {
         self.package
     }
 
-    fn identifier(&self) -> &SuiModule {
-        self.identifier.as_ref().unwrap() // borrow the contents of self.module instead of moving it ou
+    fn identifier(&self) -> Identifier {
+        self.identifier.clone()
     }
 }
 
@@ -312,15 +319,16 @@ impl SuiMailboxIndexer {
             .expect("Failed to create runtime")
             .block_on(async { SuiRpcClient::new().await })
             .expect("Failed to create SuiRpcClient");
-        // This could be of type ObjectID instead I think better.
-        let package = SuiAddress::from_bytes(<[u8; 32]>::from(locator.address)).unwrap();
+
+        let hash_map = locator.modules.clone().unwrap();
+        let package = hash_map.get("hp_mailbox").unwrap();
         let mailbox = SuiMailbox::new(conf, locator, None)?;
 
         Ok(Self {
             mailbox,
             sui_client,
-            package,
-            identifier: None, // TODO: Get the module info from the chain add to locator
+            package: *package,
+            identifier: Identifier::new("hp_mailbox").unwrap(),
         })
     }
 
@@ -357,6 +365,7 @@ impl Indexer<HyperlaneMessage> for SuiMailboxIndexer {
     ) -> ChainResult<Vec<(HyperlaneMessage, LogMeta)>> {
         get_filtered_events::<HyperlaneMessage, GasPaymentEventData>(
             &self.sui_client,
+            self.package(),
             self.identifier(),
             self.build_filter("DispatchEvent", range),
         )
@@ -373,6 +382,7 @@ impl Indexer<H256> for SuiMailboxIndexer {
     async fn fetch_logs(&self, range: RangeInclusive<u32>) -> ChainResult<Vec<(H256, LogMeta)>> {
         get_filtered_events::<H256, GasPaymentEventData>(
             &self.sui_client,
+            self.package(),
             self.identifier(),
             self.build_filter("ProcessEvent", range),
         )

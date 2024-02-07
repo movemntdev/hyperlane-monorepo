@@ -11,6 +11,7 @@ use num_derive::FromPrimitive;
 use num_traits::FromPrimitive;
 #[cfg(feature = "strum")]
 use strum::{EnumIter, EnumString, IntoStaticStr};
+use sui_sdk::types::base_types::ObjectID;
 
 use crate::{utils::many_to_one, HyperlaneProtocolError, IndexMode, H160, H256};
 
@@ -25,7 +26,7 @@ pub struct ContractLocator<'a> {
     pub domain: &'a HyperlaneDomain,
     pub address: H256,
     /// Only needed for Sui chain.
-    pub modules: Option<HashMap<String, String>>,
+    pub modules: Option<HashMap<String, ObjectID>>,
 }
 
 #[cfg(feature = "strum")]

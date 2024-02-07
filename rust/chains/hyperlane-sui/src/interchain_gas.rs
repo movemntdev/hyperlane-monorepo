@@ -2,7 +2,7 @@ use std::{ops::RangeInclusive, str::FromStr};
 
 use crate::{
     get_filtered_events, ConnectionConf, EventSourceLocator, FilterBuilder, GasPaymentEventData,
-    SuiHpProvider, SuiModule, SuiRpcClient,
+    SuiHpProvider, SuiRpcClient,
 };
 use ::sui_sdk::types::base_types::SuiAddress;
 use async_trait::async_trait;
@@ -83,48 +83,45 @@ impl InterchainGasPaymaster for SuiInterchainGasPaymaster {}
 #[derive(Debug)]
 pub struct SuiInterchainGasPaymasterIndexer {
     sui_client: SuiRpcClient,
-    package: SuiAddress,
-    ident: Option<SuiModule>,
+    package: ObjectID,
+    ident: Identifier,
 }
 
 impl FilterBuilder for SuiInterchainGasPaymasterIndexer {}
 
 impl EventSourceLocator for SuiInterchainGasPaymasterIndexer {
-    fn package(&self) -> SuiAddress {
+    fn package(&self) -> ObjectID {
         self.package
     }
 
-    fn identifier(&self) -> &SuiModule {
-        self.ident.as_ref().unwrap() // remove unwrap here!
+    fn identifier(&self) -> Identifier {
+        self.ident.clone()
     }
 }
 
 impl SuiInterchainGasPaymasterIndexer {
     /// Create a new Sui IGP indexer.
     pub fn new(conf: &ConnectionConf, locator: ContractLocator) -> ChainResult<Self> {
-        let package = SuiAddress::from_bytes(<[u8; 32]>::from(locator.address))
-            .map_err(ChainCommunicationError::from_other)
-            .unwrap();
         let sui_client = tokio::runtime::Runtime::new()
             .expect("Failed to create runtime")
             .block_on(async { SuiRpcClient::new().await })
             .expect("Failed to create SuiRpcClient");
         if let Some(module) = locator
             .modules
+            .clone()
             .expect("No modules found for Sui IGP contract")
             .get("hg_igps")
         {
+            let modules = locator.modules.clone().unwrap();
             return Ok(Self {
                 sui_client,
-                package,
-                ident: None,
+                package: modules.get("hg_igps").unwrap().clone(),
+                ident: Identifier::new("hg_igps").expect("Failed to create Identifier"),
             });
         } else {
-            Ok(Self {
-                sui_client,
-                package,
-                ident: None,
-            })
+            Err(ChainCommunicationError::from_other_str(
+                "No module found for Sui IGP contract",
+            ))
         }
     }
 }
@@ -138,6 +135,7 @@ impl Indexer<InterchainGasPayment> for SuiInterchainGasPaymasterIndexer {
     ) -> ChainResult<Vec<(InterchainGasPayment, LogMeta)>> {
         get_filtered_events::<InterchainGasPayment, GasPaymentEventData>(
             &self.sui_client,
+            self.package(),
             self.identifier(),
             self.build_filter("GasPaymentEvent", range),
         )
@@ -183,6 +181,8 @@ mod tests {
         utils::hex_or_base58_to_h256, ContractLocator, HyperlaneDomain, Indexer,
         KnownHyperlaneDomain, H256,
     };
+    use move_core_types::identifier::Identifier;
+    use sui_sdk::types::base_types::{ObjectID, SuiAddress};
     use url::Url;
 
     const OPERATOR_ADDRESS: &str =
@@ -194,6 +194,10 @@ mod tests {
     #[test]
     fn test_should_create_new_igp_indexer() {
         let addr = hex_or_base58_to_h256(OPERATOR_ADDRESS).unwrap();
+        let obj_hex = hex_or_base58_to_h256(IGPS_OBJECT_ID).unwrap();
+        let object_id =
+            ObjectID::try_from(SuiAddress::from_bytes(<[u8; 32]>::from(obj_hex)).unwrap()).unwrap();
+
         // empty Conf as Sui connection doesn't need it
         let conf = crate::ConnectionConf {
             // give URL some value, Sui does nothing with this.
@@ -205,17 +209,21 @@ mod tests {
             domain: &HyperlaneDomain::Known(KnownHyperlaneDomain::Fuji),
             modules: Some(HashMap::from_iter(vec![(
                 IGPS_MODULE_NAME.to_string(),
-                IGPS_OBJECT_ID.to_string(),
+                object_id.clone(),
             )])),
         };
         let indexer = crate::SuiInterchainGasPaymasterIndexer::new(&conf, locator).unwrap();
-        assert_eq!(indexer.package, IGPS_OBJECT_ID);
-        assert_eq!(indexer.ident.unwrap(), IGPS_MODULE_NAME);
+        assert_eq!(indexer.package, ObjectID::try_from(object_id).unwrap());
+        assert_eq!(indexer.ident, Identifier::new(IGPS_MODULE_NAME).unwrap());
     }
 
     #[test]
     fn test_indexer_should_fetch_logs_from_gas_payment_event() {
         let addr = hex_or_base58_to_h256(OPERATOR_ADDRESS).unwrap();
+        let obj_hex = hex_or_base58_to_h256(IGPS_OBJECT_ID).unwrap();
+        let object_id =
+            ObjectID::try_from(SuiAddress::from_bytes(<[u8; 32]>::from(obj_hex)).unwrap()).unwrap();
+
         // empty Conf as Sui connection doesn't need it
         let conf = crate::ConnectionConf {
             // give URL some value, Sui does nothing with this.
@@ -227,7 +235,7 @@ mod tests {
             domain: &HyperlaneDomain::Known(KnownHyperlaneDomain::Fuji),
             modules: Some(HashMap::from_iter(vec![(
                 IGPS_MODULE_NAME.to_string(),
-                IGPS_OBJECT_ID.to_string(),
+                object_id,
             )])),
         };
         let indexer = crate::SuiInterchainGasPaymasterIndexer::new(&conf, locator).unwrap();

@@ -29,12 +29,6 @@ pub enum ExecuteMode {
     Simulate,
 }
 
-#[derive(Debug)]
-pub struct SuiModule {
-    pub package: ObjectID,
-    pub ident: Identifier,
-}
-
 pub trait TryIntoPrimitive {
     fn try_into_u64(&self) -> Result<u64, anyhow::Error>;
     fn try_into_bool(&self) -> Result<bool, anyhow::Error>;
@@ -297,30 +291,29 @@ pub struct MsgProcessEventData {
 }
 
 pub trait EventSourceLocator {
-    fn package(&self) -> SuiAddress;
-    fn identifier(&self) -> &SuiModule;
+    fn package(&self) -> ObjectID;
+    fn identifier(&self) -> Identifier;
 }
 
 pub trait FilterBuilder: EventSourceLocator {
     /// Build a filter for the event
     fn build_filter(&self, event_name: &str, range: RangeInclusive<u32>) -> EventFilter {
         EventFilter::All(vec![
-            EventFilter::Sender(self.package()),
             EventFilter::MoveEventModule {
-                package: self.package().package,
-                module: self.identifier().ident.clone(),
+                package: self.package(),
+                module: self.identifier(),
             },
-            ///TODO range start and range are currently blockheight numbers. 
-            /// We need to convert them to timestamp
-            /// use get_latest_checkpoint_sequnce_number
-            /// https://mystenlabs.github.io/sui/sui_sdk/apis/struct.ReadApi.html#method.get_latest_checkpoint_sequence_number
+            //TODO range start and range are currently blockheight numbers. 
+            // We need to convert them to timestamp
+            // use get_latest_checkpoint_sequnce_number
+            // https://mystenlabs.github.io/sui/sui_sdk/apis/struct.ReadApi.html#method.get_latest_checkpoint_sequence_number
             EventFilter::TimeRange {
                 start_time: *range.start() as u64,
                 end_time: *range.end() as u64,
             },
             EventFilter::MoveEventType(StructTag {
                 address: self.package().into(),
-                module: self.identifier().ident.clone(),
+                module: self.identifier().clone(),
                 name: Identifier::new(event_name).expect("Failed to create Identifier"),
                 type_params: vec![],
             }),
