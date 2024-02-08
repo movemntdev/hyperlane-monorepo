@@ -1,24 +1,17 @@
 use std::{collections::HashMap, num::NonZeroU64, ops::RangeInclusive, str::FromStr};
 
 use async_trait::async_trait;
-use base64::write;
 use hyperlane_core::{
     ChainCommunicationError, ChainResult, ContractLocator, Decode, Encode, FixedPointNumber,
     HyperlaneAbi, HyperlaneChain, HyperlaneContract, HyperlaneDomain, HyperlaneMessage,
     HyperlaneProvider, Indexer, LogMeta, Mailbox, SequenceIndexer, TxCostEstimate, TxOutcome, H256,
     H512, U256,
 };
-use move_core_types::{identifier::Identifier, language_storage::StructTag};
-use shared_crypto::intent::Intent;
-use solana_sdk::pubkey::ParsePubkeyError;
-use solana_sdk::signature::Keypair;
-use sui_keys::keystore::{AccountKeystore, Keystore};
+use move_core_types::identifier::Identifier;
 use sui_sdk::{
     json::{MoveTypeLayout, SuiJsonValue},
-    rpc_types::{EventFilter, SuiTransactionBlockEffectsAPI},
     types::{
         base_types::{ObjectID, SuiAddress},
-        execution, parse_sui_struct_tag,
         transaction::CallArg,
     },
 };
@@ -26,20 +19,20 @@ use tracing::{info, instrument};
 use url::Url;
 
 use crate::{
-    convert_hex_string_to_h256, convert_keypair_to_sui_keystore, get_filtered_events,
+    convert_hex_string_to_h256, get_filtered_events,
     move_mutate_call, move_view_call, send_owned_objects_request, total_gas, AddressFormatter,
-    ConnectionConf, DispatchEventData, EventSourceLocator, ExecuteMode, FilterBuilder,
-    GasPaymentEventData, MsgProcessEventData, Signer, SuiHpProvider, SuiRpcClient,
+    ConnectionConf, EventSourceLocator, ExecuteMode, FilterBuilder,
+    GasPaymentEventData, Signer, SuiHpProvider, SuiRpcClient,
     TryIntoPrimitive, GAS_UNIT_PRICE,
 };
 
 /// A reference to a Mailbox contract on some Sui chain
 pub struct SuiMailbox {
     pub(crate) domain: HyperlaneDomain,
-    payer: Option<Signer>,
+    pub signer: Option<Signer>,
     pub(crate) sui_client: SuiRpcClient,
-    pub(crate) packages_address: SuiAddress,
-    rest_url: Url,
+    pub(crate) package: ObjectID,
+    url: Url,
 }
 
 impl SuiMailbox {
@@ -47,19 +40,27 @@ impl SuiMailbox {
     pub fn new(
         conf: &ConnectionConf,
         locator: ContractLocator,
-        payer: Option<Signer>,
+        signer: Option<Signer>,
     ) -> ChainResult<Self> {
-        let package_address = SuiAddress::from_bytes(<[u8; 32]>::from(locator.address)).unwrap();
+        let package = locator
+            .modules
+            .as_ref()
+            .expect("Mailbox module not found")
+            .get("hp_mailbox")
+            .expect("Mailbox module not found")
+            .clone();
+
         let sui_client = tokio::runtime::Runtime::new()
             .expect("Failed to create runtime")
             .block_on(async { SuiRpcClient::new().await })
             .expect("Failed to create SuiRpcClient");
+
         Ok(Self {
             domain: locator.domain.clone(),
-            rest_url: conf.url.clone(),
+            url: conf.url.clone(),
             sui_client,
-            packages_address: package_address,
-            payer,
+            package,
+            signer,
         })
     }
 
@@ -78,7 +79,7 @@ impl SuiMailbox {
 
 impl HyperlaneContract for SuiMailbox {
     fn address(&self) -> H256 {
-        self.packages_address.to_bytes().into()
+        self.package.into_bytes().into()
     }
 }
 
@@ -91,7 +92,7 @@ impl HyperlaneChain for SuiMailbox {
         let sui_provider = tokio::runtime::Runtime::new()
             .expect("Failed to create runtime")
             .block_on(async {
-                SuiHpProvider::new(self.domain.clone(), self.rest_url.to_string().clone()).await
+                SuiHpProvider::new(self.domain.clone(), self.url.to_string().clone()).await
             });
         Box::new(sui_provider)
     }
@@ -112,10 +113,14 @@ impl Mailbox for SuiMailbox {
 
     #[instrument(err, ret, skip(self))]
     async fn delivered(&self, id: H256) -> ChainResult<bool> {
+        let signer = self
+            .signer
+            .as_ref()
+            .ok_or_else(|| ChainCommunicationError::SignerUnavailable)?;
         let view_response = move_view_call(
             &self.sui_client,
-            &self.packages_address,
-            self.packages_address.clone(),
+            &self.package.into(),
+            signer.address.into(),
             "mailbox".to_string(),
             "delivered".to_string(),
             vec![],
@@ -132,10 +137,14 @@ impl Mailbox for SuiMailbox {
 
     #[instrument(err, ret, skip(self))]
     async fn default_ism(&self) -> ChainResult<H256> {
+        let signer = self
+            .signer
+            .as_ref()
+            .ok_or_else(|| ChainCommunicationError::SignerUnavailable)?;
         let view_response = move_view_call(
             &self.sui_client,
-            &self.packages_address,
-            self.packages_address.clone(),
+            &self.package.into(),
+            signer.address.into(),
             "mailbox".to_string(),
             "get_default_ism".to_string(),
             vec![],
@@ -152,10 +161,14 @@ impl Mailbox for SuiMailbox {
 
     #[instrument(err, ret, skip(self))]
     async fn recipient_ism(&self, id: H256) -> ChainResult<H256> {
+        let signer = self
+            .signer
+            .as_ref()
+            .ok_or_else(|| ChainCommunicationError::SignerUnavailable)?;
         let view_response = move_view_call(
             &self.sui_client,
-            &self.packages_address,
-            self.packages_address.clone(),
+            &self.package.into(),
+            signer.address.into(),
             "mailbox".to_string(),
             "get_recipient_ism".to_string(),
             vec![],
@@ -190,7 +203,7 @@ impl Mailbox for SuiMailbox {
         message.write_to(&mut encoded_message).unwrap();
 
         let signer = self
-            .payer
+            .signer
             .as_ref()
             .ok_or_else(|| ChainCommunicationError::SignerUnavailable)?;
         let recipient_module_name = self
@@ -253,7 +266,7 @@ impl Mailbox for SuiMailbox {
             .await
             .expect("Failed to fetch package name");
         let signer = self
-            .payer
+            .signer
             .as_ref()
             .ok_or_else(|| ChainCommunicationError::SignerUnavailable)?;
         let response = move_mutate_call(

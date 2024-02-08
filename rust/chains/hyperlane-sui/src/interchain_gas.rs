@@ -46,29 +46,26 @@ pub struct SuiInterchainGasPaymaster {
 
 impl SuiInterchainGasPaymaster {
     /// Create a new Sui IGP.
-    pub fn new(conf: &ConnectionConf, locator: &ContractLocator) -> ChainResult<Self> {
-        if let Some(package_id) = locator
+    pub fn new(conf: &ConnectionConf, locator: &ContractLocator) -> Self {
+        let package = locator
             .modules
-            .clone()
-            .expect("No modules found for Sui IGP contract")
+            .as_ref()
+            .expect("ISM module not found")
             .get("hp_igps")
-        {
-            return Ok(Self {
-                domain: locator.domain.clone(),
-                package: *package_id,
-                url: conf.url.to_string(),
-            });
-        } else {
-            Err(ChainCommunicationError::from_other_str(
-                "No module found for Sui IGP contract",
-            ))
+            .expect("ISM module not found")
+            .clone();
+
+        Self {
+            domain: locator.domain.clone(),
+            url: conf.url.to_string(),
+            package,
         }
     }
 }
 
 impl HyperlaneContract for SuiInterchainGasPaymaster {
-    /// Return the address of the Sui IGP contract. 
-    /// In Sui this is refered to as the ObjectID. 
+    /// Return the address of the Sui IGP contract.
+    /// In Sui this is refered to as the ObjectID.
     fn address(&self) -> H256 {
         self.package.into_bytes().into()
     }
@@ -82,9 +79,7 @@ impl HyperlaneChain for SuiInterchainGasPaymaster {
     fn provider(&self) -> Box<dyn HyperlaneProvider> {
         let sui_provider = tokio::runtime::Runtime::new()
             .expect("Failed to create runtime")
-            .block_on(async {
-                SuiHpProvider::new(self.domain.clone(), self.url.clone()).await
-            });
+            .block_on(async { SuiHpProvider::new(self.domain.clone(), self.url.clone()).await });
         Box::new(sui_provider)
     }
 }
@@ -222,7 +217,7 @@ mod tests {
                 object_id,
             )])),
         };
-        SuiInterchainGasPaymaster::new(&conf, &locator).unwrap()
+        SuiInterchainGasPaymaster::new(&conf, &locator)
     }
 
     #[test]
