@@ -164,6 +164,7 @@ impl Indexer<InterchainGasPayment> for SuiInterchainGasPaymasterIndexer {
 
 #[async_trait]
 impl SequenceIndexer<InterchainGasPayment> for SuiInterchainGasPaymasterIndexer {
+    // Same as aptos, this is not fully implemented yet.
     async fn sequence_and_tip(&self) -> ChainResult<(Option<u32>, u32)> {
         let tip = self.get_finalized_block_number().await?;
         Ok((None, tip))
@@ -172,14 +173,15 @@ impl SequenceIndexer<InterchainGasPayment> for SuiInterchainGasPaymasterIndexer 
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use std::{
-        collections::{btree_map::Range, HashMap},
+        collections::HashMap,
         ops::RangeInclusive,
     };
 
     use hyperlane_core::{
         utils::hex_or_base58_to_h256, ContractLocator, HyperlaneDomain, Indexer,
-        KnownHyperlaneDomain, H256,
+        KnownHyperlaneDomain, HyperlaneContract,
     };
     use move_core_types::identifier::Identifier;
     use sui_sdk::types::base_types::{ObjectID, SuiAddress};
@@ -190,6 +192,57 @@ mod tests {
     const IGPS_OBJECT_ID: &str =
         "0x41f95774097a22932a5016442d3c81f4a73ce4e4e23dfd245986e64862bfbe5a";
     const IGPS_MODULE_NAME: &str = "hg_igps";
+
+    fn init_gas_paymaster() -> SuiInterchainGasPaymaster {
+        let addr = hex_or_base58_to_h256(OPERATOR_ADDRESS).unwrap();
+        let obj_hex = hex_or_base58_to_h256(IGPS_OBJECT_ID).unwrap();
+        let object_id =
+            ObjectID::try_from(SuiAddress::from_bytes(<[u8; 32]>::from(obj_hex)).unwrap()).unwrap();
+
+        // empty Conf as Sui connection doesn't need it
+        let conf = crate::ConnectionConf {
+            // give URL some value, Sui does nothing with this.
+            url: Url::parse("http://localhost:8079").unwrap(),
+        };
+
+        let locator = ContractLocator {
+            address: addr,
+            domain: &HyperlaneDomain::Known(KnownHyperlaneDomain::Fuji),
+            modules: Some(HashMap::from_iter(vec![(
+                IGPS_MODULE_NAME.to_string(),
+                object_id,
+            )])),
+        };
+        SuiInterchainGasPaymaster::new(&conf, &locator)
+    }
+
+    #[test]
+    fn test_should_create_new_gas_paymaster() {
+        let paymaster = init_gas_paymaster();
+        let addr = hex_or_base58_to_h256(OPERATOR_ADDRESS).unwrap();
+        assert_eq!(paymaster.package_address, SuiAddress::from_bytes(<[u8; 32]>::from(addr)).unwrap());
+    }
+
+    #[test]
+    fn test_should_return_address_as_h256_for_gas_paymaster() {
+        let paymaster = init_gas_paymaster();
+        let addr = hex_or_base58_to_h256(OPERATOR_ADDRESS).unwrap();
+        assert_eq!(paymaster.address(), addr);
+    }
+
+    #[test]
+    fn test_should_return_domain_for_gas_paymaster() {
+        let paymaster = init_gas_paymaster();
+        assert_eq!(paymaster.domain(), &HyperlaneDomain::Known(KnownHyperlaneDomain::Fuji));
+    }
+
+    #[test]
+    fn test_should_return_provider_for_gas_paymaster() {
+        let paymaster = init_gas_paymaster();
+        let provider = paymaster.provider();
+        assert_eq!(provider.domain(), &HyperlaneDomain::Known(KnownHyperlaneDomain::Fuji));
+    }
+
 
     #[test]
     fn test_should_create_new_igp_indexer() {
