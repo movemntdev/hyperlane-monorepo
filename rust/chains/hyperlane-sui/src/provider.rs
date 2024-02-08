@@ -2,8 +2,8 @@ use crate::SuiRpcClient;
 use anyhow::Error;
 use async_trait::async_trait;
 use hyperlane_core::{
-    BlockInfo, ChainCommunicationError, ChainResult, HyperlaneChain, HyperlaneDomain,
-    HyperlaneProvider, TxnInfo, H256, U256,
+    BlockInfo, ChainCommunicationError, ChainResult, HashKind, HyperlaneChain, HyperlaneDomain,
+    HyperlaneProvider, LookupKind, TxnInfo, H256, U256,
 };
 use std::str::FromStr;
 use sui_sdk::{types::base_types::SuiAddress, SuiClient};
@@ -47,12 +47,28 @@ impl HyperlaneChain for SuiHpProvider {
 
 #[async_trait]
 impl HyperlaneProvider for SuiHpProvider {
-    async fn get_block_by_hash(&self, _has: &H256) -> ChainResult<BlockInfo> {
-        todo!() // Cannot get block as Sui is DAG based. have to get checkpoint instead.
+    async fn get_block_by_hash(&self, hash: LookupKind) -> ChainResult<BlockInfo> {
+        let id = match hash {
+            LookupKind::Sui(id) => id,
+            _ => {
+                return Err(
+                    ChainCommunicationError::from_contract_error_str("Invalid hash type").into(),
+                )
+            }
+        };
+        let checkpoint = match self.sui_client.read_api().get_checkpoint(id).await {
+            Ok(c) => c,
+            Err(e) => return Err(ChainCommunicationError::from_other(e).into()),
+        };
+        Ok(BlockInfo {
+            hash: HashKind::Sui(checkpoint.digest),
+            number: checkpoint.sequence_number,
+            timestamp: checkpoint.timestamp_ms,
+        })
     }
 
     async fn get_txn_by_hash(&self, hash: &H256) -> ChainResult<TxnInfo> {
-        todo!() // Cannot get by hash but have to get by Transaction Digest intead.
+        unimplemented!()
     }
 
     async fn is_contract(&self, _address: &H256) -> ChainResult<bool> {

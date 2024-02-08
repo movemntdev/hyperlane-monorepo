@@ -2,9 +2,20 @@ use std::fmt::Debug;
 
 use async_trait::async_trait;
 use auto_impl::auto_impl;
+use sui_sdk::{rpc_types::CheckpointId, types::digests::TransactionDigest};
 use thiserror::Error;
 
 use crate::{BlockInfo, ChainResult, HyperlaneChain, TxnInfo, H256, U256};
+
+/// The type with which to do the block lookup.
+/// In Sui this is a `TransactionDigest`, and looks up a `checkpoint` in EVM it is a `H256`.
+#[derive(Debug, Clone)]
+pub enum LookupKind {
+    /// The hash of the block to look up for EVM chains
+    Evm(H256),
+    /// The transaction digest to look up for Sui chains
+    Sui(CheckpointId)
+}
 
 /// Interface for a provider. Allows abstraction over different provider types
 /// for different chains.
@@ -17,7 +28,7 @@ use crate::{BlockInfo, ChainResult, HyperlaneChain, TxnInfo, H256, U256};
 #[auto_impl(&, Box, Arc)]
 pub trait HyperlaneProvider: HyperlaneChain + Send + Sync + Debug {
     /// Get block info for a given block hash
-    async fn get_block_by_hash(&self, hash: &H256) -> ChainResult<BlockInfo>;
+    async fn get_block_by_hash(&self, hash: LookupKind) -> ChainResult<BlockInfo>;
 
     /// Get txn info for a given txn hash
     async fn get_txn_by_hash(&self, hash: &H256) -> ChainResult<TxnInfo>;

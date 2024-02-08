@@ -2,18 +2,17 @@ use async_trait::async_trait;
 use hyperlane_core::{
     ChainCommunicationError, ChainResult, ContractLocator, HyperlaneChain, HyperlaneContract,
     HyperlaneDomain, HyperlaneMessage, HyperlaneProvider, InterchainSecurityModule, ModuleType,
-    H256, U256,
+    U256,
 };
 use move_core_types::annotated_value::MoveTypeLayout;
 use num_traits::cast::FromPrimitive;
-use solana_sdk::signature::Keypair;
 use sui_sdk::{
     json::SuiJsonValue,
-    types::base_types::{ObjectID, SuiAddress},
+    types::base_types::ObjectID,
 };
 
 use crate::{
-    move_view_call, AddressFormatter, ConnectionConf, Signer, SuiHpProvider, SuiRpcClient,
+    move_view_call, ConnectionConf, Signer, SuiHpProvider, SuiRpcClient,
     TryIntoPrimitive,
 };
 
@@ -116,7 +115,7 @@ mod tests {
     use std::collections::HashMap;
 
     use hyperlane_core::utils::hex_or_base58_to_h256;
-    use sui_sdk::types::base_types::ObjectID;
+    use sui_sdk::types::base_types::{ObjectID, SuiAddress};
     use url::Url;
 
     use super::*;
@@ -129,9 +128,9 @@ mod tests {
 
     fn init_interchain_security_module() -> SuiInterchainSecurityModule {
         let addr = hex_or_base58_to_h256(OPERATOR_ADDRESS).unwrap();
-        let obj_hex = hex_or_base58_to_h256(ISMS_OBJECT_ID).unwrap();
+        let obj = hex_or_base58_to_h256(ISMS_OBJECT_ID).unwrap();
         let object_id =
-            ObjectID::try_from(SuiAddress::from_bytes(<[u8; 32]>::from(obj_hex)).unwrap()).unwrap();
+            ObjectID::try_from(SuiAddress::from_bytes(<[u8; 32]>::from(obj)).unwrap()).unwrap();
 
         let conf = ConnectionConf {
             url: Url::parse("http://localhost:8080").unwrap(),
@@ -150,8 +149,8 @@ mod tests {
     #[test]
     fn test_should_create_new_interchain_security_module() {
         let isms = init_interchain_security_module();
-        let obj_hex = hex_or_base58_to_h256(ISMS_OBJECT_ID).unwrap();
-        assert_eq!(isms.address(), obj_hex)
+        let obj = hex_or_base58_to_h256(ISMS_OBJECT_ID).unwrap();
+        assert_eq!(isms.address(), obj)
     }
 
     #[test]

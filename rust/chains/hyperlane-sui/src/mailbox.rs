@@ -119,8 +119,8 @@ impl Mailbox for SuiMailbox {
             .ok_or_else(|| ChainCommunicationError::SignerUnavailable)?;
         let view_response = move_view_call(
             &self.sui_client,
-            &self.package.into(),
-            signer.address.into(),
+            &signer.address,
+            self.package.into(),
             "mailbox".to_string(),
             "delivered".to_string(),
             vec![],
@@ -143,8 +143,8 @@ impl Mailbox for SuiMailbox {
             .ok_or_else(|| ChainCommunicationError::SignerUnavailable)?;
         let view_response = move_view_call(
             &self.sui_client,
-            &self.package.into(),
-            signer.address.into(),
+            &signer.address,
+            self.package.into(),
             "mailbox".to_string(),
             "get_default_ism".to_string(),
             vec![],
@@ -167,8 +167,8 @@ impl Mailbox for SuiMailbox {
             .ok_or_else(|| ChainCommunicationError::SignerUnavailable)?;
         let view_response = move_view_call(
             &self.sui_client,
-            &self.package.into(),
-            signer.address.into(),
+            &signer.address,
+            self.package.into(),
             "mailbox".to_string(),
             "get_recipient_ism".to_string(),
             vec![],

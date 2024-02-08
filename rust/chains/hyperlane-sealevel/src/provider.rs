@@ -3,7 +3,7 @@ use std::{str::FromStr, sync::Arc};
 use async_trait::async_trait;
 
 use hyperlane_core::{
-    BlockInfo, ChainResult, HyperlaneChain, HyperlaneDomain, HyperlaneProvider, TxnInfo, H256, U256,
+    BlockInfo, ChainResult, HyperlaneChain, HyperlaneDomain, HyperlaneProvider, LookupKind, TxnInfo, H256, U256
 };
 use solana_sdk::{commitment_config::CommitmentConfig, pubkey::Pubkey};
 
@@ -60,7 +60,7 @@ impl HyperlaneChain for SealevelProvider {
 
 #[async_trait]
 impl HyperlaneProvider for SealevelProvider {
-    async fn get_block_by_hash(&self, _hash: &H256) -> ChainResult<BlockInfo> {
+    async fn get_block_by_hash(&self, _hash: LookupKind) -> ChainResult<BlockInfo> {
         todo!() // FIXME
     }
 
