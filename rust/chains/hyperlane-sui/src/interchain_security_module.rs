@@ -98,3 +98,48 @@ impl InterchainSecurityModule for SuiInterchainSecurityModule {
         Ok(Some(U256::zero()))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::collections::HashMap;
+
+    use hyperlane_core::utils::hex_or_base58_to_h256;
+    use sui_sdk::types::base_types::ObjectID;
+    use url::Url;
+
+    use super::*;
+
+    const OPERATOR_ADDRESS: &str =
+        "0x7d0f597d041f441d3821c1e2562226898b96a2b0e67e178eacf43c0f2f5188f2";
+    const ISMS_OBJECT_ID: &str =
+        "0x41f95774097a22932a5016442d3c81f4a73ce4e4e23dfd245986e64862bfbe5a";
+    const ISMS_MODULE_NAME: &str = "hp_isms";
+
+    fn init_interchain_security_module() -> SuiInterchainSecurityModule {
+        let addr = hex_or_base58_to_h256(OPERATOR_ADDRESS).unwrap();
+        let obj_hex = hex_or_base58_to_h256(ISMS_OBJECT_ID).unwrap();
+        let object_id =
+            ObjectID::try_from(SuiAddress::from_bytes(<[u8; 32]>::from(obj_hex)).unwrap()).unwrap();
+
+        println!("object_id: {:?}", object_id);
+
+        let conf = ConnectionConf {
+            url: Url::parse("http://localhost:8080").unwrap(), 
+        };
+        let locator = ContractLocator {
+            address: addr,
+            domain: &HyperlaneDomain::Known(hyperlane_core::KnownHyperlaneDomain::Fuji),
+            modules: Some(HashMap::from_iter(vec![(
+                ISMS_MODULE_NAME.to_string(),
+                object_id,
+            )])),
+        };
+        SuiInterchainSecurityModule::new(&conf, locator, None)
+    } 
+
+    #[test]
+    fn test_should_create_new_interchain_security_module() {
+        let isms = init_interchain_security_module();
+        assert_eq!(isms.address().to_string(), OPERATOR_ADDRESS);
+    }
+}

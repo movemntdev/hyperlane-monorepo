@@ -40,25 +40,37 @@ impl AddressFormatter for SuiAddress {
 #[derive(Debug)]
 pub struct SuiInterchainGasPaymaster {
     domain: HyperlaneDomain,
-    package_address: SuiAddress,
-    rest_url: String,
+    package: ObjectID,
+    url: String,
 }
 
 impl SuiInterchainGasPaymaster {
     /// Create a new Sui IGP.
-    pub fn new(conf: &ConnectionConf, locator: &ContractLocator) -> Self {
-        let package_address = SuiAddress::from_bytes(<[u8; 32]>::from(locator.address)).unwrap();
-        Self {
-            domain: locator.domain.clone(),
-            rest_url: conf.url.to_string(),
-            package_address,
+    pub fn new(conf: &ConnectionConf, locator: &ContractLocator) -> ChainResult<Self> {
+        if let Some(package_id) = locator
+            .modules
+            .clone()
+            .expect("No modules found for Sui IGP contract")
+            .get("hp_igps")
+        {
+            return Ok(Self {
+                domain: locator.domain.clone(),
+                package: *package_id,
+                url: conf.url.to_string(),
+            });
+        } else {
+            Err(ChainCommunicationError::from_other_str(
+                "No module found for Sui IGP contract",
+            ))
         }
     }
 }
 
 impl HyperlaneContract for SuiInterchainGasPaymaster {
+    /// Return the address of the Sui IGP contract. 
+    /// In Sui this is refered to as the ObjectID. 
     fn address(&self) -> H256 {
-        self.package_address.to_bytes().into()
+        self.package.into_bytes().into()
     }
 }
 
@@ -71,7 +83,7 @@ impl HyperlaneChain for SuiInterchainGasPaymaster {
         let sui_provider = tokio::runtime::Runtime::new()
             .expect("Failed to create runtime")
             .block_on(async {
-                SuiHpProvider::new(self.domain.clone(), self.rest_url.clone()).await
+                SuiHpProvider::new(self.domain.clone(), self.url.clone()).await
             });
         Box::new(sui_provider)
     }
@@ -102,21 +114,21 @@ impl EventSourceLocator for SuiInterchainGasPaymasterIndexer {
 impl SuiInterchainGasPaymasterIndexer {
     /// Create a new Sui IGP indexer.
     pub fn new(conf: &ConnectionConf, locator: ContractLocator) -> ChainResult<Self> {
+        let ident = "hp_igps";
         let sui_client = tokio::runtime::Runtime::new()
             .expect("Failed to create runtime")
             .block_on(async { SuiRpcClient::new().await })
             .expect("Failed to create SuiRpcClient");
-        if let Some(module) = locator
+        if let Some(package_id) = locator
             .modules
             .clone()
             .expect("No modules found for Sui IGP contract")
-            .get("hg_igps")
+            .get(ident)
         {
-            let modules = locator.modules.clone().unwrap();
             return Ok(Self {
                 sui_client,
-                package: modules.get("hg_igps").unwrap().clone(),
-                ident: Identifier::new("hg_igps").expect("Failed to create Identifier"),
+                package: *package_id,
+                ident: Identifier::new(ident).expect("Failed to create Identifier"),
             });
         } else {
             Err(ChainCommunicationError::from_other_str(
@@ -174,14 +186,11 @@ impl SequenceIndexer<InterchainGasPayment> for SuiInterchainGasPaymasterIndexer 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::{
-        collections::HashMap,
-        ops::RangeInclusive,
-    };
+    use std::{collections::HashMap, ops::RangeInclusive};
 
     use hyperlane_core::{
-        utils::hex_or_base58_to_h256, ContractLocator, HyperlaneDomain, Indexer,
-        KnownHyperlaneDomain, HyperlaneContract,
+        utils::hex_or_base58_to_h256, ContractLocator, HyperlaneContract, HyperlaneDomain, Indexer,
+        KnownHyperlaneDomain,
     };
     use move_core_types::identifier::Identifier;
     use sui_sdk::types::base_types::{ObjectID, SuiAddress};
@@ -191,7 +200,7 @@ mod tests {
         "0x7d0f597d041f441d3821c1e2562226898b96a2b0e67e178eacf43c0f2f5188f2";
     const IGPS_OBJECT_ID: &str =
         "0x41f95774097a22932a5016442d3c81f4a73ce4e4e23dfd245986e64862bfbe5a";
-    const IGPS_MODULE_NAME: &str = "hg_igps";
+    const IGPS_MODULE_NAME: &str = "hp_igps";
 
     fn init_gas_paymaster() -> SuiInterchainGasPaymaster {
         let addr = hex_or_base58_to_h256(OPERATOR_ADDRESS).unwrap();
@@ -213,36 +222,44 @@ mod tests {
                 object_id,
             )])),
         };
-        SuiInterchainGasPaymaster::new(&conf, &locator)
+        SuiInterchainGasPaymaster::new(&conf, &locator).unwrap()
     }
 
     #[test]
     fn test_should_create_new_gas_paymaster() {
         let paymaster = init_gas_paymaster();
-        let addr = hex_or_base58_to_h256(OPERATOR_ADDRESS).unwrap();
-        assert_eq!(paymaster.package_address, SuiAddress::from_bytes(<[u8; 32]>::from(addr)).unwrap());
+        let addr = hex_or_base58_to_h256(IGPS_OBJECT_ID).unwrap();
+        assert_eq!(
+            paymaster.package,
+            ObjectID::try_from(SuiAddress::from_bytes(addr).unwrap()).unwrap()
+        );
     }
 
     #[test]
     fn test_should_return_address_as_h256_for_gas_paymaster() {
         let paymaster = init_gas_paymaster();
-        let addr = hex_or_base58_to_h256(OPERATOR_ADDRESS).unwrap();
+        let addr = hex_or_base58_to_h256(IGPS_OBJECT_ID).unwrap();
         assert_eq!(paymaster.address(), addr);
     }
 
     #[test]
     fn test_should_return_domain_for_gas_paymaster() {
         let paymaster = init_gas_paymaster();
-        assert_eq!(paymaster.domain(), &HyperlaneDomain::Known(KnownHyperlaneDomain::Fuji));
+        assert_eq!(
+            paymaster.domain(),
+            &HyperlaneDomain::Known(KnownHyperlaneDomain::Fuji)
+        );
     }
 
     #[test]
     fn test_should_return_provider_for_gas_paymaster() {
         let paymaster = init_gas_paymaster();
         let provider = paymaster.provider();
-        assert_eq!(provider.domain(), &HyperlaneDomain::Known(KnownHyperlaneDomain::Fuji));
+        assert_eq!(
+            provider.domain(),
+            &HyperlaneDomain::Known(KnownHyperlaneDomain::Fuji)
+        );
     }
-
 
     #[test]
     fn test_should_create_new_igp_indexer() {
@@ -265,7 +282,7 @@ mod tests {
                 object_id.clone(),
             )])),
         };
-        let indexer = crate::SuiInterchainGasPaymasterIndexer::new(&conf, locator).unwrap();
+        let indexer = SuiInterchainGasPaymasterIndexer::new(&conf, locator).unwrap();
         assert_eq!(indexer.package, ObjectID::try_from(object_id).unwrap());
         assert_eq!(indexer.ident, Identifier::new(IGPS_MODULE_NAME).unwrap());
     }
@@ -296,7 +313,7 @@ mod tests {
             .unwrap()
             .block_on(indexer.fetch_logs(RangeInclusive::new(0, 10)))
             .unwrap();
-    
+
         assert_eq!(logs.len(), 0);
     }
 }
