@@ -579,6 +579,7 @@ impl ChainConf {
         let locator = ContractLocator {
             domain: &self.domain,
             address,
+            modules: None,
         };
 
         match &self.connection {
@@ -616,6 +617,7 @@ impl ChainConf {
         let locator = ContractLocator {
             domain: &self.domain,
             address,
+            modules: None,
         };
 
         match &self.connection {
@@ -654,6 +656,7 @@ impl ChainConf {
         let locator = ContractLocator {
             domain: &self.domain,
             address,
+            modules: None,
         };
 
         match &self.connection {
@@ -788,6 +791,7 @@ impl ChainConf {
         ContractLocator {
             domain: &self.domain,
             address,
+            modules: None,
         }
     }
 

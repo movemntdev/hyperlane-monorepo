@@ -19,10 +19,13 @@ use crate::{move_view_call, AddressFormatter, SuiMailbox, TryIntoPrimitive};
 impl MerkleTreeHook for SuiMailbox {
     #[instrument(err, ret, skip(self))]
     async fn tree(&self, _lag: Option<NonZeroU64>) -> ChainResult<IncrementalMerkle> {
+        let signer = self.signer.as_ref().ok_or_else(|| {
+            ChainCommunicationError::from_contract_error_str("No signer provided for SuiMailbox")
+        })?;
         let view_response = move_view_call(
             &self.sui_client,
-            &self.packages_address,
-            self.packages_address,
+            &signer.address,
+            self.package.into(),
             "mailbox".to_string(),
             "outbox_get_tree".to_string(),
             vec![],
@@ -69,7 +72,7 @@ impl MerkleTreeHook for SuiMailbox {
         })?;
 
         let checkpoint = Checkpoint {
-            merkle_tree_hook_address: H256::from_str(&to_hex(&self.packages_address.to_vec(), true))
+            merkle_tree_hook_address: H256::from_str(&to_hex(&self.package.to_vec(), true))
                 .expect("Failed to convert to H256"),
             mailbox_domain: self.domain.id(),
             root,

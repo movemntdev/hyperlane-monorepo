@@ -1,10 +1,10 @@
 [package]
 name = "HyperlaneIGP"
 version = "0.0.1"
-published-at = "0x41f95774097a22932a5016442d3c81f4a73ce4e4e23dfd245986e64862bfbe5a"
+published-at = "0x4051ef54f76c12561249f556e9e3e13c789dbfd23871a0d62e50b54b18c0a9fb"
 
 [dependencies]
-Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "framework/testnet" }
+Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "framework/devnet" }
 
 [addresses]
 hp_igps = "0x0"

@@ -1,10 +1,21 @@
+use sui_sdk::types::{digests::TransactionDigest, messages_checkpoint::CheckpointDigest};
+
 use crate::{H256, U256};
+
+/// The type of hash, depending on network.
+#[derive(Debug, Clone)]
+pub enum HashKind {
+    /// The hash of the block for EVM chains `H256`
+    Evm(H256),
+    /// The hash of the checkpoint for Sui `TransactionDigest`
+    Sui(CheckpointDigest),
+}
 
 /// Info about a given block in the chain.
 #[derive(Debug, Clone)]
 pub struct BlockInfo {
     /// Hash of this block
-    pub hash: H256,
+    pub hash: HashKind,
     /// Unix timestamp of this block's creation in seconds
     pub timestamp: u64,
     /// Block height or the nth block in the chain

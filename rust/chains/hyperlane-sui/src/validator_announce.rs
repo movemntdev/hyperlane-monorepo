@@ -37,7 +37,7 @@ impl SuiValidatorAnnounce {
         locator: ContractLocator<'_>,
         signer: Option<Signer>,
     ) -> Result<Self, Error> {
-        let sui_client = SuiRpcClient::new(conf.url.to_string()).await?;
+        let sui_client = SuiRpcClient::new().await?;
         let package_address = SuiAddress::from_bytes(<[u8; 32]>::from(locator.address)).unwrap();
         Ok(Self {
             package_address,

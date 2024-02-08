@@ -7,7 +7,7 @@ use async_trait::async_trait;
 use derive_new::new;
 use ethers::prelude::Middleware;
 use ethers_core::abi::Address;
-use hyperlane_core::{ethers_core_types, U256};
+use hyperlane_core::{ethers_core_types, LookupKind, U256};
 use tokio::time::sleep;
 use tracing::instrument;
 
@@ -51,7 +51,15 @@ where
     M: Middleware + 'static,
 {
     #[instrument(err, skip(self))]
-    async fn get_block_by_hash(&self, hash: &H256) -> ChainResult<BlockInfo> {
+    async fn get_block_by_hash(&self, hash: LookupKind) -> ChainResult<BlockInfo> {
+        let hash = match hash {
+            LookupKind::Eth(h) => h,
+            _ => {
+                return Err(
+                    ChainCommunicationError::from_contract_error_str("Invalid hash type").into(),
+                )
+            }
+        };
         let block = get_with_retry_on_none(hash, |h| {
             let eth_h256: ethers_core_types::H256 = h.into();
             self.provider.get_block(eth_h256)

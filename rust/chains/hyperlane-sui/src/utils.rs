@@ -1,6 +1,6 @@
 use crate::{
     AddressFormatter, ConvertFromDryRun, ExecuteMode, GasPaymentEventData, HyperlaneSuiError,
-    Signer, SuiModule, SuiRpcClient, TxSpecificData,
+    Signer, SuiRpcClient, TxSpecificData,
 };
 use anyhow::{Chain, Error};
 use fastcrypto::encoding::Encoding;
@@ -54,7 +54,8 @@ pub fn convert_hex_string_to_h256(addr: &str) -> Result<H256, String> {
 ///Get events from the chain with the EventFilter
 pub async fn get_filtered_events<T, S>(
     sui_client: &SuiRpcClient,
-    module: &SuiModule,
+    package: ObjectID,
+    module: Identifier,
     filter: EventFilter,
 ) -> ChainResult<Vec<(T, LogMeta)>>
 where
@@ -63,7 +64,12 @@ where
 {
     let events_page = sui_client
         .event_api()
-        .query_events(filter, None, None, true)
+        .query_events(
+            EventFilter::MoveModule { package, module },
+            None,
+            None,
+            true,
+        )
         .await
         .map_err(|e| {
             ChainCommunicationError::SuiObjectReadError(format!(
@@ -72,8 +78,11 @@ where
             ))
         })?;
 
+    println!("events_page: {:?}", events_page.data.len());
+
     let mut messages: Vec<(T, LogMeta)> = Vec::new();
     for event in events_page.data.into_iter() {
+        println!("event: {:?}", event);
         let tx = sui_client
             .read_api()
             .get_transaction_with_options(
@@ -92,7 +101,9 @@ where
         };
         let gas_payment_event_data: S = event.try_into()?;
         messages.push((gas_payment_event_data.try_into()?, log_meta));
+        println!("messaged pushed");
     }
+    println!("messages: {:?}", messages.len());
     Ok(messages)
 }
 

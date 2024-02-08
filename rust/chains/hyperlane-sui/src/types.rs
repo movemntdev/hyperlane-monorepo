@@ -29,12 +29,6 @@ pub enum ExecuteMode {
     Simulate,
 }
 
-#[derive(Debug)]
-pub struct SuiModule {
-    pub package: ObjectID,
-    pub module: Identifier,
-}
-
 pub trait TryIntoPrimitive {
     fn try_into_u64(&self) -> Result<u64, anyhow::Error>;
     fn try_into_bool(&self) -> Result<bool, anyhow::Error>;
@@ -188,6 +182,16 @@ pub struct GasPaymentEventData {
     pub event_id: EventID,
 }
 
+impl TryFrom<SuiEvent> for GasPaymentEventData {
+    type Error = ChainCommunicationError;
+    fn try_from(event: SuiEvent) -> Result<Self, Self::Error> {
+        let contents = bcs::from_bytes::<GasPaymentEventData>(&event.bcs)
+            .map_err(ChainCommunicationError::from_other)
+            .unwrap();
+        Ok(contents)
+    }
+}
+
 impl From<GasPaymentEventData> for HyperlaneMessage {
     fn from(event_data: GasPaymentEventData) -> Self {
         HyperlaneMessage {
@@ -208,15 +212,7 @@ impl From<GasPaymentEventData> for H256 {
     }
 }
 
-impl TryFrom<SuiEvent> for GasPaymentEventData {
-    type Error = ChainCommunicationError;
-    fn try_from(event: SuiEvent) -> Result<Self, Self::Error> {
-        let contents = bcs::from_bytes::<GasPaymentEventData>(&event.bcs)
-            .map_err(ChainCommunicationError::from_other)
-            .unwrap();
-        Ok(contents)
-    }
-}
+
 
 impl From<GasPaymentEventData> for InterchainGasPayment {
     fn from(event_data: GasPaymentEventData) -> Self {
@@ -295,30 +291,29 @@ pub struct MsgProcessEventData {
 }
 
 pub trait EventSourceLocator {
-    fn package_address(&self) -> SuiAddress;
-    fn module(&self) -> &SuiModule;
+    fn package(&self) -> ObjectID;
+    fn identifier(&self) -> Identifier;
 }
 
 pub trait FilterBuilder: EventSourceLocator {
     /// Build a filter for the event
     fn build_filter(&self, event_name: &str, range: RangeInclusive<u32>) -> EventFilter {
         EventFilter::All(vec![
-            EventFilter::Sender(self.package_address()),
             EventFilter::MoveEventModule {
-                package: self.module().package,
-                module: self.module().module.clone(),
+                package: self.package(),
+                module: self.identifier(),
             },
-            ///TODO range start and range are currently blockheight numbers. 
-            /// We need to convert them to timestamp
-            /// use get_latest_checkpoint_sequnce_number
-            /// https://mystenlabs.github.io/sui/sui_sdk/apis/struct.ReadApi.html#method.get_latest_checkpoint_sequence_number
+            //TODO range start and range are currently blockheight numbers. 
+            // We need to convert them to timestamp
+            // use get_latest_checkpoint_sequnce_number
+            // https://mystenlabs.github.io/sui/sui_sdk/apis/struct.ReadApi.html#method.get_latest_checkpoint_sequence_number
             EventFilter::TimeRange {
                 start_time: *range.start() as u64,
                 end_time: *range.end() as u64,
             },
             EventFilter::MoveEventType(StructTag {
-                address: self.package_address().into(),
-                module: self.module().module.clone(),
+                address: self.package().into(),
+                module: self.identifier().clone(),
                 name: Identifier::new(event_name).expect("Failed to create Identifier"),
                 type_params: vec![],
             }),

@@ -1,42 +1,45 @@
 use async_trait::async_trait;
 use hyperlane_core::{
-    ChainResult, ContractLocator, HyperlaneChain, HyperlaneContract, HyperlaneDomain,
-    HyperlaneMessage, HyperlaneProvider, MultisigIsm, H256,
+    ChainCommunicationError, ChainResult, ContractLocator, HyperlaneChain, HyperlaneContract, HyperlaneDomain, HyperlaneMessage, HyperlaneProvider, MultisigIsm, H256
 };
-use move_core_types::annotated_value::MoveTypeLayout;
-use solana_sdk::signature::Keypair;
 use sui_sdk::{
     json::SuiJsonValue,
-    types::{base_types::SuiAddress, transaction::CallArg},
+    types::{base_types::{ObjectID, SuiAddress}, transaction::CallArg},
 };
 
 use crate::{
-    move_view_call, AddressFormatter, ConnectionConf, Signer, SuiHpProvider, SuiRpcClient, TryIntoPrimitive, Validators
+    move_view_call, ConnectionConf, Signer, SuiHpProvider, SuiRpcClient, TryIntoPrimitive, Validators
 };
 
 ///A reference to a MultsigIsm module on a Sui Chain.
 #[derive(Debug)]
 pub struct SuiMultisigISM {
-    signer: Option<Signer>, //field never read
+    signer: Option<Signer>, 
     domain: HyperlaneDomain,
     sui_client: SuiRpcClient,
-    package_address: SuiAddress,
-    rest_url: String,
+    package: ObjectID,
+    url: String,
 }
 
 impl SuiMultisigISM {
     ///Create a new Sui Multisig ISM.
     pub fn new(conf: &ConnectionConf, locator: ContractLocator, signer: Option<Signer>) -> Self {
-        let package_address = SuiAddress::from_bytes(<[u8; 32]>::from(locator.address)).unwrap();
+        let package = locator
+            .modules
+            .as_ref()
+            .expect("ISM module not found")
+            .get("multisig_ism")
+            .expect("ISM module not found")
+            .clone();
         let sui_client = tokio::runtime::Runtime::new()
             .expect("Failed to create runtime")
-            .block_on(async { SuiRpcClient::new(conf.url.to_string()).await })
+            .block_on(async { SuiRpcClient::new().await })
             .expect("Failed to create SuiRpcClient");
         Self {
             domain: locator.domain.clone(),
-            rest_url: conf.url.to_string(),
+            url: conf.url.to_string(),
             sui_client,
-            package_address,
+            package,
             signer,
         }
     }
@@ -44,7 +47,7 @@ impl SuiMultisigISM {
 
 impl HyperlaneContract for SuiMultisigISM {
     fn address(&self) -> H256 {
-        self.package_address.to_bytes().into()
+        self.package.into_bytes().into()
     }
 }
 
@@ -57,7 +60,7 @@ impl HyperlaneChain for SuiMultisigISM {
         let sui_provider = tokio::runtime::Runtime::new()
             .expect("Failed to create runtime")
             .block_on(async {
-                SuiHpProvider::new(self.domain.clone(), self.rest_url.clone()).await
+                SuiHpProvider::new(self.domain.clone(), self.url.clone()).await
             });
         Box::new(sui_provider)
     }
@@ -70,10 +73,14 @@ impl MultisigIsm for SuiMultisigISM {
         &self,
         message: &HyperlaneMessage,
     ) -> ChainResult<(Vec<H256>, u8)> {
+        let signer = self
+            .signer
+            .as_ref()
+            .ok_or_else(|| ChainCommunicationError::from_contract_error_str("No signer provided"))?;
         let view_response = move_view_call(
             &self.sui_client,
-            &self.package_address,
-            self.package_address,
+            &signer.address,
+            self.package.into(),
             "multisig_ism".to_string(),
             "validators_and_threshold".to_string(),
             vec![],
