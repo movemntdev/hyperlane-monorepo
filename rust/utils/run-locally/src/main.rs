@@ -350,15 +350,11 @@ fn main() -> ExitCode {
         solana_ledger_dir.as_ref().to_path_buf(),
     );
 
-<<<<<<< HEAD
     let (solana_config_path, solana_validator) = start_solana_validator.join();
-    state.push_agent(solana_validator);
-    state.push_agent(start_anvil.join());
-=======
-    // let (_solana_config_path, solana_validator) = start_solana_validator.join();
+
+    // Was commented out in aptos-v3 commit
     // state.push_agent(solana_validator);
     // state.push_agent(start_anvil.join());
->>>>>>> feat: aptos e2e test for v3
 
     // spawn 1st validator before any messages have been sent to test empty mailbox
     state.push_agent(validator_envs.first().unwrap().clone().spawn("VL1"));
