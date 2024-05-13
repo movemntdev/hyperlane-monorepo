@@ -4,7 +4,7 @@ version = "1.0.0"
 authors = []
 
 [addresses]
-hp_isms = "_"
+hp_isms = "0x1"
 
 [dev-addresses]
 

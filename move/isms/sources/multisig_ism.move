@@ -94,7 +94,7 @@ module hp_isms::multisig_ism {
       origin_mailbox,
       origin_domain,
       merkle_root,
-      merkle_index,//msg_utils::nonce(message),
+      msg_utils::nonce(message),
       msg_utils::id(message)
     ));
 
