@@ -6,7 +6,7 @@ use std::{collections::HashMap, num::NonZeroU64, str::FromStr as _};
 use aptos_sdk::move_types::identifier::Identifier;
 use async_trait::async_trait;
 use borsh::{BorshDeserialize, BorshSerialize};
-use hyperlane_core::SequenceIndexer;
+use hyperlane_core::{FixedPointNumber, SequenceIndexer};
 use jsonrpc_core::futures_util::TryFutureExt;
 use jsonrpc_core::Middleware;
 use tracing::{debug, info, instrument, warn};
@@ -222,7 +222,7 @@ impl Mailbox for AptosMailbox {
         Ok(TxOutcome {
             transaction_id: H512::from(tx_hash),
             executed: has_success,
-            gas_price: U256::from(GAS_UNIT_PRICE),
+            gas_price: FixedPointNumber::zero(),
             gas_used: U256::from(gas_used.0),
         })
     }
@@ -269,7 +269,7 @@ impl Mailbox for AptosMailbox {
 
         Ok(TxCostEstimate {
             gas_limit: U256::from(response.gas_used.0),
-            gas_price: U256::from(GAS_UNIT_PRICE),
+            gas_price: FixedPointNumber::zero(),
             l2_gas_limit: None,
         })
     }

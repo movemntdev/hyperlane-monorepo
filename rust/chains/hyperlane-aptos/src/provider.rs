@@ -89,4 +89,8 @@ impl HyperlaneProvider for AptosHpProvider {
         // Aptos account can be both normal account & contract account
         Ok(true)
     }
+
+    async fn get_balance(&self, _address: String) -> ChainResult<U256> {
+        Ok(U256::from(0)) // Dummy implementation
+    }
 }

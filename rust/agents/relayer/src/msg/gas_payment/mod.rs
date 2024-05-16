@@ -79,7 +79,7 @@ impl GasPaymentEnforcer {
         message: &HyperlaneMessage,
         tx_cost_estimate: &TxCostEstimate,
     ) -> Result<Option<U256>> {
-        return Ok(Some(U256::from(0)));
+        //return Ok(Some(U256::from(0)));
 
         let msg_id = message.id();
         let gas_payment_key = GasPaymentKey {
