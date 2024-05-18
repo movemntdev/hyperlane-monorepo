@@ -2,28 +2,32 @@ import { BigNumberish } from 'ethers';
 
 import {
   AgentConfig,
-  AgentSignerKeyType,
   ChainMap,
   GasPaymentEnforcement,
+  HyperlaneAddresses,
+  HyperlaneAddressesMap,
+  HyperlaneFactories,
   MatchingList,
   RelayerConfig as RelayerAgentConfig,
-  chainMetadata,
-  getDomainId,
 } from '@hyperlane-xyz/sdk';
-import { ProtocolType } from '@hyperlane-xyz/utils';
+import { Address, ProtocolType, addressToBytes32 } from '@hyperlane-xyz/utils';
 
-import { AgentAwsUser } from '../../agents/aws';
-import { Role } from '../../roles';
-import { HelmStatefulSetValues } from '../infrastructure';
+import { getChain, getDomainId } from '../../../config/registry.js';
+import { AgentAwsUser } from '../../agents/aws/user.js';
+import { Role } from '../../roles.js';
+import { HelmStatefulSetValues } from '../infrastructure.js';
 
 import {
   AgentConfigHelper,
   KeyConfig,
   RootAgentConfig,
   defaultChainSignerKeyConfig,
-} from './agent';
+} from './agent.js';
 
-export { GasPaymentEnforcement as GasPaymentEnforcementConfig } from '@hyperlane-xyz/sdk';
+export interface MetricAppContext {
+  name: string;
+  matchingList: MatchingList;
+}
 
 // Incomplete basic relayer agent config
 export interface BaseRelayerConfig {
@@ -32,6 +36,7 @@ export interface BaseRelayerConfig {
   blacklist?: MatchingList;
   transactionGasLimit?: BigNumberish;
   skipTransactionGasLimitFor?: string[];
+  metricAppContexts?: MetricAppContext[];
 }
 
 // Full relayer-specific agent config for a single chain
@@ -83,13 +88,18 @@ export class RelayerConfigHelper extends AgentConfigHelper<RelayerConfig> {
       relayerConfig.skipTransactionGasLimitFor =
         baseConfig.skipTransactionGasLimitFor.join(',');
     }
+    if (baseConfig.metricAppContexts) {
+      relayerConfig.metricAppContexts = JSON.stringify(
+        baseConfig.metricAppContexts,
+      );
+    }
 
     return relayerConfig;
   }
 
   // Get the signer configuration for each chain by the chain name.
   async signers(): Promise<ChainMap<KeyConfig>> {
-    let chainSigners: ChainMap<KeyConfig> = {};
+    const chainSigners: ChainMap<KeyConfig> = {};
 
     if (this.aws) {
       const awsUser = new AgentAwsUser(
@@ -103,7 +113,7 @@ export class RelayerConfigHelper extends AgentConfigHelper<RelayerConfig> {
 
       // AWS keys only work for Ethereum chains
       for (const chainName of this.relayChains) {
-        if (chainMetadata[chainName].protocol === ProtocolType.Ethereum) {
+        if (getChain(chainName).protocol === ProtocolType.Ethereum) {
           chainSigners[chainName] = awsKey;
         }
       }
@@ -142,11 +152,17 @@ export class RelayerConfigHelper extends AgentConfigHelper<RelayerConfig> {
   }
 }
 
-// Create a matching list for the given router addresses
 export function routerMatchingList(
-  routers: ChainMap<{ router: string }>,
+  routers: ChainMap<{ router: Address }>,
 ): MatchingList {
-  const chains = Object.keys(routers);
+  return matchingList(routers);
+}
+
+// Create a matching list for the given contract addresses
+export function matchingList<F extends HyperlaneFactories>(
+  addressesMap: HyperlaneAddressesMap<F>,
+): MatchingList {
+  const chains = Object.keys(addressesMap);
 
   // matching list must have at least one element so bypass and check before returning
   const matchingList: MatchingList = [];
@@ -157,11 +173,16 @@ export function routerMatchingList(
         continue;
       }
 
+      const uniqueAddresses = (addresses: HyperlaneAddresses<F>) =>
+        Array.from(new Set(Object.values(addresses)).values()).map((s) =>
+          addressToBytes32(s),
+        );
+
       matchingList.push({
-        originDomain: getDomainId(chainMetadata[source]),
-        senderAddress: routers[source].router,
-        destinationDomain: getDomainId(chainMetadata[destination]),
-        recipientAddress: routers[destination].router,
+        originDomain: getDomainId(source),
+        senderAddress: uniqueAddresses(addressesMap[source]),
+        destinationDomain: getDomainId(destination),
+        recipientAddress: uniqueAddresses(addressesMap[destination]),
       });
     }
   }
