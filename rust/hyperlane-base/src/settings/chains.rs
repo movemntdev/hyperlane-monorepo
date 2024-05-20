@@ -138,6 +138,16 @@ impl ChainConnectionConf {
             _ => None,
         }
     }
+
+    /// Get the message batch configuration for this chain.
+    pub fn operation_batch_config(&self) -> Option<&OperationBatchConfig> {
+        match self {
+            Self::Ethereum(conf) => Some(&conf.operation_batch),
+            Self::Cosmos(conf) => Some(&conf.operation_batch),
+            Self::Sealevel(conf) => Some(&conf.operation_batch),
+            _ => None,
+        }
+    }
 }
 
 /// Addresses for mailbox chain contracts
@@ -310,10 +320,13 @@ impl ChainConf {
                     self.reorg_period,
                 )?);
                 Ok(indexer as Box<dyn SequenceAwareIndexer<HyperlaneMessage>>)
+<<<<<<< HEAD
             }
             ChainConnectionConf::Aptos(conf) => {
                 let indexer = Box::new(h_aptos::AptosMailboxIndexer::new(conf, locator)?);
                 Ok(indexer as Box<dyn SequenceIndexer<HyperlaneMessage>>)
+=======
+>>>>>>> origin/main
             }
         }
         .context(ctx)
@@ -353,10 +366,13 @@ impl ChainConf {
                     self.reorg_period,
                 )?);
                 Ok(indexer as Box<dyn SequenceAwareIndexer<H256>>)
+<<<<<<< HEAD
             }
             ChainConnectionConf::Aptos(conf) => {
                 let indexer = Box::new(h_aptos::AptosMailboxIndexer::new(conf, locator)?);
                 Ok(indexer as Box<dyn SequenceIndexer<H256>>)
+=======
+>>>>>>> origin/main
             }
         }
         .context(ctx)
@@ -441,12 +457,15 @@ impl ChainConf {
                     self.reorg_period,
                 )?);
                 Ok(indexer as Box<dyn SequenceAwareIndexer<InterchainGasPayment>>)
+<<<<<<< HEAD
             }
             ChainConnectionConf::Aptos(conf) => {
                 let indexer = Box::new(h_aptos::AptosInterchainGasPaymasterIndexer::new(
                     conf, locator,
                 ));
                 Ok(indexer as Box<dyn SequenceIndexer<InterchainGasPayment>>)
+=======
+>>>>>>> origin/main
             }
         }
         .context(ctx)

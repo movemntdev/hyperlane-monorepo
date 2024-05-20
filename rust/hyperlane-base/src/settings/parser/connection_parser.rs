@@ -177,10 +177,16 @@ pub fn build_connection_conf(
                 operation_batch,
             })
         }),
+<<<<<<< HEAD
         HyperlaneDomainProtocol::Cosmos => build_cosmos_connection_conf(rpcs, chain, err),
         HyperlaneDomainProtocol::Aptos => rpcs
             .iter()
             .next()
             .map(|url| ChainConnectionConf::Aptos(h_aptos::ConnectionConf { url: url.clone() })),
+=======
+        HyperlaneDomainProtocol::Cosmos => {
+            build_cosmos_connection_conf(rpcs, chain, err, operation_batch)
+        }
+>>>>>>> origin/main
     }
 }
