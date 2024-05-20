@@ -231,12 +231,8 @@ impl KnownHyperlaneDomain {
                 Moonbeam, Gnosis, MantaPacific, Neutron, Injective, InEvm
             ],
             Testnet: [
-<<<<<<< HEAD
                 Alfajores, MoonbaseAlpha, Sepolia, ScrollSepolia, Chiado, PlumeTestnet, Fuji, BinanceSmartChainTestnet,
                 AptosTestnet,
-=======
-                Alfajores, MoonbaseAlpha, Sepolia, ScrollSepolia, Chiado, PlumeTestnet, Fuji, BinanceSmartChainTestnet
->>>>>>> origin/main
             ],
             LocalTestChain: [Test1, Test2, Test3, FuelTest1, SealevelTest1, SealevelTest2, CosmosTest99990, CosmosTest99991, AptosLocalnet1, AptosLocalnet2],
         })
@@ -255,10 +251,7 @@ impl KnownHyperlaneDomain {
             HyperlaneDomainProtocol::Fuel: [FuelTest1],
             HyperlaneDomainProtocol::Sealevel: [SealevelTest1, SealevelTest2],
             HyperlaneDomainProtocol::Cosmos: [CosmosTest99990, CosmosTest99991, Neutron, Injective],
-<<<<<<< HEAD
             HyperlaneDomainProtocol::Aptos: [AptosTestnet, AptosLocalnet1, AptosLocalnet2],
-=======
->>>>>>> origin/main
         })
     }
 
@@ -271,12 +264,8 @@ impl KnownHyperlaneDomain {
                 Ethereum, Sepolia, Polygon, Avalanche, Fuji, Optimism,
                 BinanceSmartChain, BinanceSmartChainTestnet, Celo, Gnosis, Alfajores, Moonbeam, MoonbaseAlpha,
                 ScrollSepolia, Chiado, MantaPacific, Neutron, Injective, InEvm,
-<<<<<<< HEAD
                 Test1, Test2, Test3, FuelTest1, SealevelTest1, SealevelTest2, CosmosTest99990, CosmosTest99991,
                 AptosTestnet, AptosLocalnet1, AptosLocalnet2
-=======
-                Test1, Test2, Test3, FuelTest1, SealevelTest1, SealevelTest2, CosmosTest99990, CosmosTest99991
->>>>>>> origin/main
             ],
         })
     }
@@ -457,11 +446,7 @@ impl HyperlaneDomain {
         use HyperlaneDomainProtocol::*;
         let protocol = self.domain_protocol();
         many_to_one!(match protocol {
-<<<<<<< HEAD
             IndexMode::Block: [Ethereum, Cosmos, Aptos], 
-=======
-            IndexMode::Block: [Ethereum, Cosmos],
->>>>>>> origin/main
             IndexMode::Sequence : [Sealevel, Fuel],
         })
     }
