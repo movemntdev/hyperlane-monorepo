@@ -212,12 +212,7 @@ where
             .request(BLOCK_NUMBER_RPC, ())
             .await
             .map(|r: U64| r.as_u64())
-<<<<<<< HEAD
-            .map_err(Into::into)
-            .expect("Failed to get block number");
-=======
             .map_err(Into::into)?;
->>>>>>> origin/main
         Ok(res)
     }
 }
