@@ -161,6 +161,7 @@ fn parse_chain(
                 .and_then(|d| match d.domain_protocol() {
                     HyperlaneDomainProtocol::Ethereum => Some(IndexMode::Block),
                     HyperlaneDomainProtocol::Sealevel => Some(IndexMode::Sequence),
+                    HyperlaneDomainProtocol::Aptos => Some(IndexMode::Block),
                     _ => None,
                 })
                 .unwrap_or_default()
