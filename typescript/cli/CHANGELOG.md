@@ -1,5 +1,21 @@
 # @hyperlane-xyz/cli
 
+## 3.12.0
+
+### Minor Changes
+
+- cc873198: Default to home directory for local registry
+- ff221f66: Allows a developer to pass a private key or address to dry-run, and ensures HYP_KEY is only used for private keys.
+- eba39368: Add CLI-side submitter to use SDK submitter from CRUD and other command modules.
+
+### Patch Changes
+
+- 2b7dfe27: Improve defaults in chain config command
+- Updated dependencies [eba39368]
+- Updated dependencies [69de68a6]
+  - @hyperlane-xyz/sdk@3.12.0
+  - @hyperlane-xyz/utils@3.12.0
+
 ## 3.11.1
 
 ### Patch Changes
