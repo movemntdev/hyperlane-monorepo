@@ -22,6 +22,10 @@ serde_json.workspace = true
 hex.workspace = true
 ctrlc.workspace = true
 eyre.workspace = true
+ethers.workspace = true
+ethers-core.workspace = true
+ethers-contract.workspace = true
+tokio.workspace = true
 maplit.workspace = true
 nix = { workspace = true, features = ["signal"], default-features = false }
 tempfile.workspace = true
@@ -29,7 +33,7 @@ ureq = { workspace = true, default-features = false }
 which.workspace = true
 macro_rules_attribute.workspace = true
 regex.workspace = true
-hpl-interface.workspace = true
+hyperlane-cosmwasm-interface.workspace = true
 cosmwasm-schema.workspace = true
 
 [features]
