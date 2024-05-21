@@ -119,8 +119,8 @@ parking_lot = "0.12"
 paste = "1.0"
 pretty_env_logger = "0.5.0"
 primitive-types = "=0.12.1"
-prometheus = "0.13"
-protobuf = "*"
+prometheus = { version = "0.13.3", default-features = false }
+protobuf = "*" 
 regex = "1.5"
 reqwest = "0.11"
 ripemd = "0.1.3"
@@ -199,7 +199,7 @@ rand = "0.7.3"
 
 [workspace.dependencies.aptos-sdk]
 git = "https://github.com/movementlabsxyz/aptos-core"
-branch = "monza"
+rev = "cd4e28b4723244ec932099a51061fe49aaa5890f" #hyperlane fix 
 ## End
 
 [workspace.dependencies.ethers]
@@ -344,3 +344,8 @@ version = "=0.32.2"
 branch = "trevor/0.32.2-fork"
 git = "https://github.com/hyperlane-xyz/tendermint-rs.git"
 version = "=0.32.2"
+
+[patch.crates-io]
+serde-reflection = { git = "https://github.com/aptos-labs/serde-reflection", rev = "73b6bbf748334b71ff6d7d09d06a29e3062ca075" }
+merlin = { git = "https://github.com/aptos-labs/merlin" }
+x25519-dalek = { git = "https://github.com/aptos-labs/x25519-dalek", branch = "zeroize_v1" }
