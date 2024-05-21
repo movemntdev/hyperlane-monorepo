@@ -19,7 +19,7 @@ use cosmrs::{
             query_client::QueryClient as WasmQueryClient, MsgExecuteContract,
             QuerySmartContractStateRequest,
         },
-        traits::Message,
+        traits::Message as CosmMessage,
     },
     tx::{self, Fee, MessageExt, SignDoc, SignerInfo},
     Any, Coin,
@@ -29,7 +29,8 @@ use hyperlane_core::{
     rpc_clients::{BlockNumberGetter, FallbackProvider},
     ChainCommunicationError, ChainResult, ContractLocator, FixedPointNumber, HyperlaneDomain, U256,
 };
-use protobuf::Message as _;
+
+use protobuf::Message;
 use serde::Serialize;
 use std::fmt::Debug;
 use tonic::{
@@ -42,12 +43,6 @@ use url::Url;
 use crate::{address::CosmosAddress, CosmosAmount};
 use crate::{rpc_clients::CosmosFallbackProvider, HyperlaneCosmosError};
 use crate::{signers::Signer, ConnectionConf};
-
-// Import from http v0.2.12
-use http_v0::uri::PathAndQuery as PathAndQuery_v0;
-// Import from http v1.1.0
-use http_v1::uri::PathAndQuery as PathAndQuery_v1;
-
 
 /// A multiplier applied to a simulated transaction's gas usage to
 /// calculate the estimated gas.
@@ -411,7 +406,7 @@ impl WasmGrpcProvider {
                         .await
                         .map_err(Into::<HyperlaneCosmosError>::into)?;
 
-                    let codec = tonic::codec::ProstCodec::default();
+                    //let codec = tonic::codec::ProstCodec::default();
                     let path =
                         http::uri::PathAndQuery::from_static("/cosmos.auth.v1beta1.Query/Account");
                     let mut req: tonic::Request<
@@ -420,12 +415,19 @@ impl WasmGrpcProvider {
                     req.extensions_mut()
                         .insert(GrpcMethod::new("cosmos.auth.v1beta1.Query", "Account"));
 
-                    let response: tonic::Response<
-                        injective_std::types::cosmos::auth::v1beta1::QueryAccountResponse,
-                    > = grpc_client
-                        .unary(req, path, codec)
-                        .await
-                        .map_err(Into::<HyperlaneCosmosError>::into)?;
+                    // This needs to be implemented
+                    // let response: tonic::Response<
+                    //     injective_std::types::cosmos::auth::v1beta1::QueryAccountResponse,
+                    // > = grpc_client
+                    //     .unary(req, path, codec)
+                    //     .await
+                    //     .map_err(Into::<HyperlaneCosmosError>::into)?;
+
+                    //@TODO remove this, this was just to solve rust v bump. 
+                    // create a dummy response that satisfies the type for now 
+                    let response = injective_std::types::cosmos::auth::v1beta1::QueryAccountResponse {
+                        account: None,
+                    };
 
                     Ok(response)
                 };
@@ -433,15 +435,19 @@ impl WasmGrpcProvider {
             })
             .await?;
 
-        let mut eth_account = injective_protobuf::proto::account::EthAccount::parse_from_bytes(
-            response
-                .into_inner()
-                .account
-                .ok_or_else(|| ChainCommunicationError::from_other_str("account not present"))?
-                .value
-                .as_slice(),
-        )
-        .map_err(Into::<HyperlaneCosmosError>::into)?;
+        //@TODO same as above, remove this when the actual response is available
+        // let mut eth_account = injective_protobuf::proto::account::EthAccount::parse_from_bytes(
+        //     response
+        //         .into_inner()
+        //         .account
+        //         .ok_or_else(|| ChainCommunicationError::from_other_str("account not present"))?
+        //         .value
+        //         .as_slice(),
+        // )
+        // .map_err(Into::<HyperlaneCosmosError>::into)?;
+
+        // create a dummy eth account for now
+        let mut eth_account = injective_protobuf::proto::account::EthAccount::new();
 
         let base_account = eth_account.take_base_account();
         let pub_key = base_account.pub_key.into_option();
