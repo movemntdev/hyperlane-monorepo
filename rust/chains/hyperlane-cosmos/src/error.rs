@@ -41,9 +41,10 @@ pub enum HyperlaneCosmosError {
     /// Prost error
     #[error("{0}")]
     Prost(#[from] prost::DecodeError),
+    //Not working after protobuf version lock, for now, don't use this error.
     /// Protobuf error
-    #[error("{0}")]
-    Protobuf(#[from] protobuf::ProtobufError),
+    //#[error("{0}")]
+    //Protobuf(#[from] protobuf::ProtobufError), 
     /// Fallback providers failed
     #[error("Fallback providers failed. (Errors: {0:?})")]
     FallbackProvidersFailed(Vec<HyperlaneCosmosError>),
