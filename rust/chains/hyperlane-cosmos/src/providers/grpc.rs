@@ -43,6 +43,12 @@ use crate::{address::CosmosAddress, CosmosAmount};
 use crate::{rpc_clients::CosmosFallbackProvider, HyperlaneCosmosError};
 use crate::{signers::Signer, ConnectionConf};
 
+// Import from http v0.2.12
+use http_v0::uri::PathAndQuery as PathAndQuery_v0;
+// Import from http v1.1.0
+use http_v1::uri::PathAndQuery as PathAndQuery_v1;
+
+
 /// A multiplier applied to a simulated transaction's gas usage to
 /// calculate the estimated gas.
 const GAS_ESTIMATE_MULTIPLIER: f64 = 1.25;
