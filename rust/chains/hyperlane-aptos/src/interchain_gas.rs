@@ -6,7 +6,7 @@ use async_trait::async_trait;
 use hyperlane_core::{
     ChainCommunicationError, ChainResult, ContractLocator, HyperlaneChain, HyperlaneContract,
     HyperlaneDomain, HyperlaneProvider, Indexer, InterchainGasPaymaster, InterchainGasPayment,
-    LogMeta, SequenceIndexer, H256,
+    LogMeta, H256,
 };
 use tracing::{info, instrument};
 
@@ -105,13 +105,5 @@ impl Indexer<InterchainGasPayment> for AptosInterchainGasPaymasterIndexer {
             .unwrap()
             .into_inner();
         Ok(chain_state.block_height as u32)
-    }
-}
-
-#[async_trait]
-impl SequenceIndexer<InterchainGasPayment> for AptosInterchainGasPaymasterIndexer {
-    async fn sequence_and_tip(&self) -> ChainResult<(Option<u32>, u32)> {
-        let tip = self.get_finalized_block_number().await?;
-        Ok((None, tip))
     }
 }

@@ -5,7 +5,7 @@ use async_trait::async_trait;
 use derive_new::new;
 use hyperlane_core::{
     accumulator::incremental::IncrementalMerkle, ChainCommunicationError, ChainResult, Checkpoint,
-    Indexer, LogMeta, MerkleTreeHook, MerkleTreeInsertion, SequenceIndexer, H256,
+    Indexer, LogMeta, MerkleTreeHook, MerkleTreeInsertion, SequenceIndexed, H256,
 };
 use std::str::FromStr;
 use std::{num::NonZeroU64, ops::RangeInclusive};
@@ -78,9 +78,4 @@ impl Indexer<MerkleTreeInsertion> for AptosMerkleTreeHookIndexer {
         Ok(0)
     }
 }
-#[async_trait]
-impl SequenceIndexer<MerkleTreeInsertion> for AptosMerkleTreeHookIndexer {
-    async fn sequence_and_tip(&self) -> ChainResult<(Option<u32>, u32)> {
-        Ok((None, 0))
-    }
-}
+

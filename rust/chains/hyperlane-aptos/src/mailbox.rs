@@ -6,7 +6,7 @@ use std::{collections::HashMap, num::NonZeroU64, str::FromStr as _};
 use aptos_sdk::move_types::identifier::Identifier;
 use async_trait::async_trait;
 use borsh::{BorshDeserialize, BorshSerialize};
-use hyperlane_core::{FixedPointNumber, SequenceIndexer};
+use hyperlane_core::{FixedPointNumber};
 use jsonrpc_core::futures_util::TryFutureExt;
 use jsonrpc_core::Middleware;
 use tracing::{debug, info, instrument, warn};
@@ -314,16 +314,6 @@ impl AptosMailboxIndexer {
 }
 
 #[async_trait]
-impl SequenceIndexer<HyperlaneMessage> for AptosMailboxIndexer {
-    #[instrument(err, skip(self))]
-    async fn sequence_and_tip(&self) -> ChainResult<(Option<u32>, u32)> {
-        let tip = Indexer::<HyperlaneMessage>::get_finalized_block_number(self as _).await?;
-        let count = Mailbox::count(&self.mailbox, None).await?;
-        Ok((Some(count), tip))
-    }
-}
-
-#[async_trait]
 impl Indexer<HyperlaneMessage> for AptosMailboxIndexer {
     async fn fetch_logs(
         &self,
@@ -365,26 +355,5 @@ impl Indexer<H256> for AptosMailboxIndexer {
 
     async fn get_finalized_block_number(&self) -> ChainResult<u32> {
         self.get_finalized_block_number().await
-    }
-}
-
-#[async_trait]
-impl SequenceIndexer<H256> for AptosMailboxIndexer {
-    async fn sequence_and_tip(&self) -> ChainResult<(Option<u32>, u32)> {
-        // TODO: implement when sealevel scraper support is implemented
-        info!("Message delivery indexing not implemented");
-        let tip = Indexer::<H256>::get_finalized_block_number(self).await?;
-        Ok((Some(1), tip))
-    }
-}
-
-struct AptosMailboxAbi;
-
-// TODO Don't support it for Aptos
-impl HyperlaneAbi for AptosMailboxAbi {
-    const SELECTOR_SIZE_BYTES: usize = 8;
-
-    fn fn_map() -> HashMap<Vec<u8>, &'static str> {
-        todo!()
     }
 }
