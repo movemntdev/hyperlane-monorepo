@@ -226,11 +226,10 @@ impl KnownHyperlaneDomain {
         many_to_one!(match self {
             Mainnet: [
                 Ethereum, Avalanche, Arbitrum, Polygon, Optimism, BinanceSmartChain, Celo,
-                Moonbeam, Gnosis, MantaPacific, Neutron, Injective, InEvm
+                Moonbeam, Gnosis, MantaPacific, Neutron, Injective, InEvm, 
             ],
             Testnet: [
-                Goerli, Mumbai, Fuji, ArbitrumGoerli, OptimismGoerli, BinanceSmartChainTestnet,
-                Alfajores, MoonbaseAlpha, Sepolia, PolygonZkEvmTestnet, LineaGoerli, BaseGoerli, ScrollSepolia, Chiado, AptosTestnet
+                 Fuji, BinanceSmartChainTestnet, Alfajores, MoonbaseAlpha, Sepolia, ScrollSepolia, Chiado, AptosTestnet, PlumeTestnet
             ],
             LocalTestChain: [Test1, Test2, Test3, FuelTest1, SealevelTest1, SealevelTest2, CosmosTest99990, CosmosTest99991, AptosLocalnet1, AptosLocalnet2],
         })
@@ -244,7 +243,7 @@ impl KnownHyperlaneDomain {
                 Ethereum, Sepolia, Polygon, Avalanche, Fuji, Arbitrum,
                 Optimism, BinanceSmartChain, BinanceSmartChainTestnet, Celo, Gnosis,
                 Alfajores, Moonbeam, InEvm, MoonbaseAlpha, ScrollSepolia,
-                Chiado, MantaPacific, PlumeTestnet, Test1, Test2, Test3
+                Chiado, MantaPacific, PlumeTestnet, Test1, Test2, Test3, Neutron, Injective
             ],
             HyperlaneDomainProtocol::Fuel: [FuelTest1],
             HyperlaneDomainProtocol::Sealevel: [SealevelTest1, SealevelTest2],
@@ -262,7 +261,8 @@ impl KnownHyperlaneDomain {
                 Ethereum, Sepolia, Polygon, Avalanche, Fuji, Optimism,
                 BinanceSmartChain, BinanceSmartChainTestnet, Celo, Gnosis, Alfajores, Moonbeam, MoonbaseAlpha,
                 ScrollSepolia, Chiado, MantaPacific, Neutron, Injective, InEvm,
-                Test1, Test2, Test3, FuelTest1, SealevelTest1, SealevelTest2, CosmosTest99990, CosmosTest99991
+                Test1, Test2, Test3, FuelTest1, SealevelTest1, SealevelTest2, CosmosTest99990, CosmosTest99991,
+                AptosTestnet, AptosLocalnet1, AptosLocalnet2
             ],
         })
     }

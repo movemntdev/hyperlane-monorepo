@@ -87,7 +87,7 @@ eyre = "=0.6.8"
 fixed-hash = "0.8.0"
 fuels = "0.38"
 fuels-code-gen = "0.38"
-futures = "0.3"
+futures = "0.3.30"
 futures-util = "0.3"
 generic-array = { version = "0.14", features = ["serde", "more_lengths"] }
 # Required for WASM support https://docs.rs/getrandom/latest/getrandom/#webassembly-support
@@ -198,8 +198,8 @@ bcs = { git = "https://github.com/aptos-labs/bcs.git", rev = "d31fab9d81748e2594
 rand = "0.7.3"
 
 [workspace.dependencies.aptos-sdk]
-git = "https://github.com/blockchainlover2019/aptos-core"
-branch = "sovereign-labs-rollup"
+git = "https://github.com/movementlabsxyz/aptos-core"
+branch = "monza"
 ## End
 
 [workspace.dependencies.ethers]
