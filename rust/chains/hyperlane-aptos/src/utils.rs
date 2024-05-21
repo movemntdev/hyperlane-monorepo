@@ -18,7 +18,7 @@ use aptos_sdk::{
         AccountKey, LocalAccount,
     },
 };
-use hyperlane_core::{ChainCommunicationError, ChainResult, LogMeta, H256, H512, U256};
+use hyperlane_core::{ChainCommunicationError, ChainResult, Indexed, LogMeta, H256, H512, U256};
 use solana_sdk::signature::Keypair;
 use std::{ops::RangeInclusive, str::FromStr};
 
@@ -165,7 +165,7 @@ pub async fn get_filtered_events<T, S>(
     struct_tag: &str,
     field_name: &str,
     range: RangeInclusive<u32>,
-) -> ChainResult<Vec<(T, LogMeta)>>
+) -> ChainResult<Vec<(Indexed<T>, LogMeta)>>
 where
     S: TryFrom<VersionedEvent> + TxSpecificData + TryInto<T> + Clone,
     ChainCommunicationError:
@@ -194,14 +194,14 @@ where
     let start_tx_version = start_block.first_version;
     let end_tx_version = end_block.last_version;
 
-    // filter events which is in from `start_tx_version` to `end_tx_version`
+    // filter events which are from `start_tx_version` to `end_tx_version`
     let filtered_events: Vec<VersionedEvent> = events
         .into_iter()
         .filter(|e| e.version.0 > start_tx_version.0 && e.version.0 <= end_tx_version.0)
         .collect();
 
     // prepare result
-    let mut messages: Vec<(T, LogMeta)> =
+    let mut messages: Vec<(Indexed<T>, LogMeta)> =
         Vec::with_capacity((range.end() - range.start()) as usize);
     for filtered_event in filtered_events {
         let evt_data: S = filtered_event.clone().try_into()?;
@@ -212,7 +212,7 @@ where
             .map_err(ChainCommunicationError::from_other)?
             .into_inner();
         messages.push((
-            evt_data.clone().try_into()?,
+            Indexed::new(evt_data.clone().try_into()?),
             LogMeta {
                 address: account_address.into_bytes().into(),
                 block_number: block_height,
@@ -228,3 +228,4 @@ where
 
     Ok(messages)
 }
+
