@@ -143,7 +143,7 @@ pub async fn convert_keypair_to_aptos_account(
 ) -> LocalAccount {
     let signer_priv_key = Ed25519PrivateKey::try_from(payer.secret().to_bytes().as_ref()).unwrap();
     let signer_address =
-        AuthenticationKey::ed25519(&Ed25519PublicKey::from(&signer_priv_key)).derived_address();
+        AuthenticationKey::ed25519(&Ed25519PublicKey::from(&signer_priv_key)).account_address();
     let signer_account = LocalAccount::new(
         signer_address,
         AccountKey::from_private_key(signer_priv_key),

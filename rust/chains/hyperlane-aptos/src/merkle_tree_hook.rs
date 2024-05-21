@@ -3,12 +3,20 @@ use crate::utils;
 use crate::AptosMailbox;
 use async_trait::async_trait;
 use derive_new::new;
+use hyperlane_core::Indexed;
+use hyperlane_core::Indexer;
+use hyperlane_core::LogMeta;
+use hyperlane_core::MerkleTreeInsertion;
+use hyperlane_core::SequenceAwareIndexer;
+//use hyperlane_core::Indexed;
+//use hyperlane_core::InterchainGasPayment;
 use hyperlane_core::{
     accumulator::incremental::IncrementalMerkle, ChainCommunicationError, ChainResult, Checkpoint,
-    Indexer, LogMeta, MerkleTreeHook, MerkleTreeInsertion, SequenceIndexed, H256,
+    MerkleTreeHook, H256
 };
+use std::ops::RangeInclusive;
 use std::str::FromStr;
-use std::{num::NonZeroU64, ops::RangeInclusive};
+use std::{num::NonZeroU64};
 use tracing::instrument;
 
 #[async_trait]
@@ -71,11 +79,19 @@ impl Indexer<MerkleTreeInsertion> for AptosMerkleTreeHookIndexer {
     async fn fetch_logs(
         &self,
         _range: RangeInclusive<u32>,
-    ) -> ChainResult<Vec<(MerkleTreeInsertion, LogMeta)>> {
+    ) -> ChainResult<Vec<(Indexed<MerkleTreeInsertion>, LogMeta)>> {
         Ok(vec![])
     }
+
     async fn get_finalized_block_number(&self) -> ChainResult<u32> {
         Ok(0)
     }
 }
+
+#[async_trait]
+impl SequenceAwareIndexer<MerkleTreeInsertion> for AptosMerkleTreeHookIndexer {
+    async fn latest_sequence_count_and_tip(&self) -> ChainResult<(Option<u32>, u32)> {
+        Ok((None, 0))
+    }
+} 
 

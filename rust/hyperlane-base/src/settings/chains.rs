@@ -313,7 +313,7 @@ impl ChainConf {
             }
             ChainConnectionConf::Aptos(conf) => {
                 let indexer = Box::new(h_aptos::AptosMailboxIndexer::new(conf, locator)?);
-                Ok(indexer as Box<dyn SequenceIndexer<HyperlaneMessage>>)
+                Ok(indexer as Box<dyn SequenceAwareIndexer<HyperlaneMessage>>)
             }
         }
         .context(ctx)
@@ -356,7 +356,7 @@ impl ChainConf {
             }
             ChainConnectionConf::Aptos(conf) => {
                 let indexer = Box::new(h_aptos::AptosMailboxIndexer::new(conf, locator)?);
-                Ok(indexer as Box<dyn SequenceIndexer<H256>>)
+                Ok(indexer as Box<dyn SequenceAwareIndexer<H256>>)
             }
         }
         .context(ctx)
@@ -446,7 +446,7 @@ impl ChainConf {
                 let indexer = Box::new(h_aptos::AptosInterchainGasPaymasterIndexer::new(
                     conf, locator,
                 ));
-                Ok(indexer as Box<dyn SequenceIndexer<InterchainGasPayment>>)
+                Ok(indexer as Box<dyn SequenceAwareIndexer<InterchainGasPayment>>)
             }
         }
         .context(ctx)
@@ -494,7 +494,7 @@ impl ChainConf {
             }
             ChainConnectionConf::Aptos(_) => {
                 let indexer = Box::new(h_aptos::AptosMerkleTreeHookIndexer::new());
-                Ok(indexer as Box<dyn SequenceIndexer<MerkleTreeInsertion>>)
+                Ok(indexer as Box<dyn SequenceAwareIndexer<MerkleTreeInsertion>>)
             } // TODO: add tree_hook_indexer
         }
         .context(ctx)

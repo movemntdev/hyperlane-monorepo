@@ -6,7 +6,7 @@ use std::{collections::HashMap, num::NonZeroU64, str::FromStr as _};
 use aptos_sdk::move_types::identifier::Identifier;
 use async_trait::async_trait;
 use borsh::{BorshDeserialize, BorshSerialize};
-use hyperlane_core::{FixedPointNumber};
+use hyperlane_core::{FixedPointNumber, Indexed, SequenceAwareIndexer};
 use jsonrpc_core::futures_util::TryFutureExt;
 use jsonrpc_core::Middleware;
 use tracing::{debug, info, instrument, warn};
@@ -318,7 +318,7 @@ impl Indexer<HyperlaneMessage> for AptosMailboxIndexer {
     async fn fetch_logs(
         &self,
         range: RangeInclusive<u32>,
-    ) -> ChainResult<Vec<(HyperlaneMessage, LogMeta)>> {
+    ) -> ChainResult<Vec<(Indexed<HyperlaneMessage>, LogMeta)>> {
         get_filtered_events::<HyperlaneMessage, DispatchEventData>(
             &self.aptos_client,
             self.package_address,
@@ -339,7 +339,10 @@ impl Indexer<HyperlaneMessage> for AptosMailboxIndexer {
 
 #[async_trait]
 impl Indexer<H256> for AptosMailboxIndexer {
-    async fn fetch_logs(&self, range: RangeInclusive<u32>) -> ChainResult<Vec<(H256, LogMeta)>> {
+    async fn fetch_logs(
+        &self, 
+        range: RangeInclusive<u32>
+    ) -> ChainResult<Vec<(Indexed<H256>, LogMeta)>> {
         get_filtered_events::<H256, MsgProcessEventData>(
             &self.aptos_client,
             self.package_address,
@@ -355,5 +358,45 @@ impl Indexer<H256> for AptosMailboxIndexer {
 
     async fn get_finalized_block_number(&self) -> ChainResult<u32> {
         self.get_finalized_block_number().await
+    }
+}
+
+#[async_trait]
+impl SequenceAwareIndexer<HyperlaneMessage> for AptosMailboxIndexer {
+    async fn latest_sequence_count_and_tip(&self) -> ChainResult<(Option<u32>, u32)> {
+        let tree = self.mailbox.tree(None).await?;
+
+        let count: u32 = tree
+            .count()
+            .try_into()
+            .map_err(ChainCommunicationError::from_other)?;
+
+        let tip = count.checked_sub(1).ok_or_else(|| {
+            ChainCommunicationError::from_contract_error_str(
+                "Mailbox is empty, cannot compute checkpoint",
+            )
+        })?;
+
+        Ok((Some(count), tip))
+    }
+}
+
+#[async_trait]
+impl SequenceAwareIndexer<H256> for AptosMailboxIndexer {
+    async fn latest_sequence_count_and_tip(&self) -> ChainResult<(Option<u32>, u32)> {
+        let tree = self.mailbox.tree(None).await?;
+
+        let count: u32 = tree
+            .count()
+            .try_into()
+            .map_err(ChainCommunicationError::from_other)?;
+
+        let tip = count.checked_sub(1).ok_or_else(|| {
+            ChainCommunicationError::from_contract_error_str(
+                "Mailbox is empty, cannot compute checkpoint",
+            )
+        })?;
+
+        Ok((Some(count), tip))
     }
 }

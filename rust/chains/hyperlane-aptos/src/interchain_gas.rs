@@ -4,7 +4,7 @@ use std::ops::RangeInclusive;
 
 use async_trait::async_trait;
 use hyperlane_core::{
-    ChainCommunicationError, ChainResult, ContractLocator, HyperlaneChain, HyperlaneContract, HyperlaneDomain, HyperlaneProvider, Indexed, Indexer, InterchainGasPaymaster, InterchainGasPayment, LogMeta, H256
+    ChainCommunicationError, ChainResult, ContractLocator, HyperlaneChain, HyperlaneContract, HyperlaneDomain, HyperlaneProvider, Indexed, Indexer, InterchainGasPaymaster, InterchainGasPayment, LogMeta, SequenceAwareIndexer, H256
 };
 use tracing::{info, instrument};
 
@@ -102,4 +102,18 @@ impl Indexer<InterchainGasPayment> for AptosInterchainGasPaymasterIndexer {
             .into_inner();
         Ok(chain_state.block_height as u32)
     }
+}
+
+#[async_trait]
+impl SequenceAwareIndexer<InterchainGasPayment> for AptosInterchainGasPaymasterIndexer {
+   async fn latest_sequence_count_and_tip(&self) -> ChainResult<(Option<u32>, u32)> {
+        let chain_state = self
+            .aptos_client
+            .get_ledger_information()
+            .await
+            .map_err(ChainCommunicationError::from_other)
+            .unwrap()
+            .into_inner();
+        Ok((None, chain_state.block_height as u32))
+   }
 }

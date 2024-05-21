@@ -65,7 +65,6 @@ impl AptosValidatorAnnounce {
     async fn announce_contract_call(
         &self,
         announcement: SignedType<Announcement>,
-        _tx_gas_limit: Option<U256>,
     ) -> Result<(String, bool)> {
         let serialized_signature: [u8; 65] = announcement.signature.into();
 
@@ -170,16 +169,15 @@ impl ValidatorAnnounce for AptosValidatorAnnounce {
     #[instrument(err, ret, skip(self))]
     async fn announce(
         &self,
-        _announcement: SignedType<Announcement>,
-        _tx_gas_limit: Option<U256>,
+        announcement: SignedType<Announcement>,
     ) -> ChainResult<TxOutcome> {
         info!(
             "Announcing Aptos Validator _announcement ={:?}",
-            _announcement
+            announcement
         );
 
         let (tx_hash, is_success) = self
-            .announce_contract_call(_announcement, _tx_gas_limit)
+            .announce_contract_call(announcement)
             .await
             .map_err(|e| {
                 println!("tx error {}", e.to_string());
