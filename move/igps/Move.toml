@@ -9,8 +9,8 @@ hp_igps = "_"
 [dev-addresses]
 
 [dependencies.AptosFramework]
-git = "https://github.com/aptos-labs/aptos-core.git"
-rev = "testnet"
+git = "https://github.com/movementlabsxyz/aptos-core.git"
+branch = "main"
 subdir = "aptos-move/framework/aptos-framework"
 
 [dependencies.HyperlaneLibrary]
