@@ -35,28 +35,31 @@ impl ScraperDb {
         origin_domain: u32,
         origin_mailbox: &H256,
     ) -> Result<Option<u32>> {
-        #[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]
+        #[derive(Copy, Clone, Debug, DeriveColumn)]
         enum QueryAs {
             Nonce,
         }
-
+    
         let last_nonce = message::Entity::find()
             .filter(message::Column::Origin.eq(origin_domain))
             .filter(message::Column::OriginMailbox.eq(address_to_bytes(origin_mailbox)))
             .select_only()
             .column_as(message::Column::Nonce.max(), QueryAs::Nonce)
-            .into_values::<i32, QueryAs>()
+            .into_tuple::<(Option<i32>,)>()
             .one(&self.0)
             .await?
-            .map(|idx| idx as u32);
+            .map(|t| t.0.map(|idx| idx as u32))
+            .flatten();
+    
         debug!(
             ?last_nonce,
             origin_domain,
             ?origin_mailbox,
             "Queried last message nonce from database"
         );
+    
         Ok(last_nonce)
-    }
+    } 
 
     /// Get the dispatched message associated with a nonce.
     #[instrument(skip(self))]
@@ -66,7 +69,7 @@ impl ScraperDb {
         origin_mailbox: &H256,
         nonce: u32,
     ) -> Result<Option<HyperlaneMessage>> {
-        #[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]
+        #[derive(Copy, Clone, Debug, DeriveColumn)]
         enum QueryAs {
             Nonce,
         }
@@ -100,7 +103,7 @@ impl ScraperDb {
         origin_mailbox: &H256,
         nonce: u32,
     ) -> Result<Option<i64>> {
-        #[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]
+        #[derive(Copy, Clone, Debug, DeriveColumn)]
         enum QueryAs {
             Nonce,
         }
@@ -112,10 +115,13 @@ impl ScraperDb {
             .select_only()
             .column_as(message::Column::OriginTxId.max(), QueryAs::Nonce)
             .group_by(message::Column::Origin)
-            .into_values::<i64, QueryAs>()
+            .into_tuple::<(Option<i64>,)>()
             .one(&self.0)
             .await?;
-        Ok(tx_id)
+        
+        // a bit of a nasty use of flatten but this gets around the issue of 
+        // not being able to derive EnumIter for Query As.
+        Ok(tx_id.map(|t| t.0).flatten())
     }
 
     async fn deliveries_count(&self, domain: u32, destination_mailbox: Vec<u8>) -> Result<u64> {
