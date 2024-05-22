@@ -195,8 +195,12 @@ impl ChainConf {
                     None,
                 )?;
                 Ok(Box::new(provider) as Box<dyn HyperlaneProvider>)
-            },
-            ChainConnectionConf::Aptos(_) => todo!(),
+            }
+            ChainConnectionConf::Aptos(conf) => {
+                let provider =
+                    h_aptos::AptosHpProvider::new(locator.domain.clone(), conf.url.to_string());
+                Ok(Box::new(provider) as Box<dyn HyperlaneProvider>)
+            }
         }
         .context(ctx)
     }
