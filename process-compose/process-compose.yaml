@@ -1,0 +1,44 @@
+version: "3"
+
+environment:
+
+processes:
+  # movement:
+  #   command: |
+  #     exit 1
+  #   readiness_probe:
+  #     exec:
+  #       command: echo "true"
+
+  start-eth-chain:
+    command: |
+      anvil --chain-id 666 --config-out "./anvil.json" --port 4242
+    readiness_probe:
+      exec:
+        command: echo "true"
+
+  deploy-eth-contracts:
+      # Get the private key from the anvil.json file with jq.
+    command: |
+      forge create --rpc-url http://localhost:4242 --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 \
+      ./solidity/contracts/client/Router.sol:Router
+    depends_on:
+      start-eth-chain:
+        condition: process_healthy
+    readiness_probe:
+      exec:
+        command: echo "true"
+
+  relayer:
+    command: |
+      cd ../rust && cargo run -p relayer
+    readiness_probe:
+      exec:
+        command: echo "true"
+
+  validator:
+    command: |
+      cd ../rust && cargo run -p validator
+    readiness_probe:
+      exec:
+        command: echo "true"
