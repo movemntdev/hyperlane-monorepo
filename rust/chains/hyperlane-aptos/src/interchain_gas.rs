@@ -3,22 +3,27 @@
 use std::ops::RangeInclusive;
 
 use async_trait::async_trait;
-use hyperlane_core::{
-    ChainCommunicationError, ChainResult, ContractLocator, HyperlaneChain, HyperlaneContract, HyperlaneDomain, HyperlaneProvider, Indexed, Indexer, InterchainGasPaymaster, InterchainGasPayment, LogMeta, SequenceAwareIndexer, H256
-};
 use tracing::{info, instrument};
+use url::Url;
 
-use crate::{get_filtered_events, AptosHpProvider, ConnectionConf, GasPaymentEventData};
+use hyperlane_core::{
+    ChainCommunicationError, ChainResult, ContractLocator, HyperlaneChain, HyperlaneContract,
+    HyperlaneDomain, HyperlaneProvider, Indexed, Indexer, InterchainGasPaymaster,
+    InterchainGasPayment, LogMeta, SequenceAwareIndexer, H256,
+};
 
-use crate::AptosClient;
 use aptos_sdk::types::account_address::AccountAddress;
+
+use crate::{
+    get_filtered_events, AptosClient, AptosHpProvider, ConnectionConf, GasPaymentEventData,
+};
 
 /// A reference to an IGP contract on some Aptos chain
 #[derive(Debug)]
 pub struct AptosInterchainGasPaymaster {
     domain: HyperlaneDomain,
     package_address: AccountAddress,
-    aptos_client_url: String,
+    aptos_client_url: Url,
 }
 
 impl AptosInterchainGasPaymaster {
@@ -26,7 +31,7 @@ impl AptosInterchainGasPaymaster {
     pub fn new(conf: &ConnectionConf, locator: &ContractLocator) -> Self {
         let package_address =
             AccountAddress::from_bytes(<[u8; 32]>::from(locator.address)).unwrap();
-        let aptos_client_url = conf.url.to_string();
+        let aptos_client_url = conf.url.clone();
         Self {
             package_address,
             domain: locator.domain.clone(),
@@ -68,7 +73,7 @@ impl AptosInterchainGasPaymasterIndexer {
     pub fn new(conf: &ConnectionConf, locator: ContractLocator) -> Self {
         let package_address =
             AccountAddress::from_bytes(<[u8; 32]>::from(locator.address)).unwrap();
-        let aptos_client = AptosClient::new(conf.url.to_string());
+        let aptos_client = AptosClient::new(conf.url.clone());
         Self {
             aptos_client,
             package_address,
@@ -106,7 +111,7 @@ impl Indexer<InterchainGasPayment> for AptosInterchainGasPaymasterIndexer {
 
 #[async_trait]
 impl SequenceAwareIndexer<InterchainGasPayment> for AptosInterchainGasPaymasterIndexer {
-   async fn latest_sequence_count_and_tip(&self) -> ChainResult<(Option<u32>, u32)> {
+    async fn latest_sequence_count_and_tip(&self) -> ChainResult<(Option<u32>, u32)> {
         let chain_state = self
             .aptos_client
             .get_ledger_information()
@@ -115,5 +120,5 @@ impl SequenceAwareIndexer<InterchainGasPayment> for AptosInterchainGasPaymasterI
             .unwrap()
             .into_inner();
         Ok((None, chain_state.block_height as u32))
-   }
+    }
 }

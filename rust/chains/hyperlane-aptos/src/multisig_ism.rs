@@ -48,7 +48,7 @@ impl AptosMultisigISM {
     pub fn new(conf: &ConnectionConf, locator: ContractLocator, payer: Option<Keypair>) -> Self {
         let package_address =
             AccountAddress::from_bytes(<[u8; 32]>::from(locator.address)).unwrap();
-        let aptos_client = AptosClient::new(conf.url.to_string());
+        let aptos_client = AptosClient::new(conf.url.clone());
 
         Self {
             payer,
@@ -70,9 +70,9 @@ impl HyperlaneChain for AptosMultisigISM {
         &self.domain
     }
     fn provider(&self) -> Box<dyn HyperlaneProvider> {
-        Box::new(AptosHpProvider::new(
+        Box::new(AptosHpProvider::with_client(
             self.domain.clone(),
-            self.aptos_client.path_prefix_string(),
+            self.aptos_client.clone(),
         ))
     }
 }

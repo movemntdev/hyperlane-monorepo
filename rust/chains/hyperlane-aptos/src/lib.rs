@@ -5,7 +5,6 @@
 #![deny(warnings)]
 
 pub use crate::multisig_ism::*;
-pub use client::AptosClient;
 pub use interchain_gas::*;
 pub use interchain_security_module::*;
 pub use mailbox::*;
@@ -17,7 +16,8 @@ pub use types::*;
 pub use utils::*;
 pub use validator_announce::*;
 
-mod client;
+use aptos_sdk::rest_client::Client as AptosClient;
+
 mod interchain_gas;
 mod interchain_security_module;
 mod mailbox;

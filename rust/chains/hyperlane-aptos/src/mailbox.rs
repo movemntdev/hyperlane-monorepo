@@ -66,7 +66,7 @@ impl AptosMailbox {
         let domain = locator.domain.id();
         let package_address =
             AccountAddress::from_bytes(<[u8; 32]>::from(locator.address)).unwrap();
-        let aptos_client = AptosClient::new(conf.url.to_string());
+        let aptos_client = AptosClient::new(conf.url.clone());
 
         Ok(AptosMailbox {
             domain: locator.domain.clone(),
@@ -113,9 +113,9 @@ impl HyperlaneChain for AptosMailbox {
     }
 
     fn provider(&self) -> Box<dyn HyperlaneProvider> {
-        Box::new(AptosHpProvider::new(
+        Box::new(AptosHpProvider::with_client(
             self.domain.clone(),
-            self.aptos_client.path_prefix_string(),
+            self.aptos_client.clone(),
         ))
     }
 }
@@ -289,7 +289,7 @@ pub struct AptosMailboxIndexer {
 
 impl AptosMailboxIndexer {
     pub fn new(conf: &ConnectionConf, locator: ContractLocator) -> ChainResult<Self> {
-        let aptos_client = AptosClient::new(conf.url.to_string());
+        let aptos_client = AptosClient::new(conf.url.clone());
         let package_address =
             AccountAddress::from_bytes(<[u8; 32]>::from(locator.address)).unwrap();
         let mailbox = AptosMailbox::new(conf, locator, None)?;
@@ -340,7 +340,7 @@ impl Indexer<HyperlaneMessage> for AptosMailboxIndexer {
 #[async_trait]
 impl Indexer<H256> for AptosMailboxIndexer {
     async fn fetch_logs(
-        &self, 
+        &self,
         range: RangeInclusive<u32>
     ) -> ChainResult<Vec<(Indexed<H256>, LogMeta)>> {
         get_filtered_events::<H256, MsgProcessEventData>(
