@@ -17,6 +17,9 @@
       "**/.git/**": true,
       "**/node_modules/*/**": true
     },
+    "[rust]": {
+      "editor.defaultFormatter": "rust-lang.rust-analyzer"
+    },
   },
   "folders": [
     {

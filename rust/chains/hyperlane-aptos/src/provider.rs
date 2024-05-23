@@ -2,9 +2,11 @@ use aptos_sdk::crypto::HashValue;
 use aptos_sdk::rest_client::aptos_api_types::Transaction;
 
 use async_trait::async_trait;
+use url::Url;
 
 use hyperlane_core::{
-    BlockInfo, ChainInfo, ChainResult, HyperlaneChain, HyperlaneDomain, HyperlaneProvider, TxnInfo, TxnReceiptInfo, H256, U256
+    BlockInfo, ChainInfo, ChainResult, HyperlaneChain, HyperlaneDomain, HyperlaneProvider, TxnInfo,
+    TxnReceiptInfo, H256, U256,
 };
 
 use crate::{convert_hex_string_to_h256, AptosClient};
@@ -18,8 +20,17 @@ pub struct AptosHpProvider {
 
 impl AptosHpProvider {
     /// Create a new Aptos provider.
-    pub fn new(domain: HyperlaneDomain, rest_url: String) -> Self {
+    pub fn new(domain: HyperlaneDomain, rest_url: Url) -> Self {
         let aptos_client = AptosClient::new(rest_url);
+        AptosHpProvider {
+            domain,
+            aptos_client,
+        }
+    }
+
+    // The design of hyperlane-core traits forces us to clone client instances.
+    // This kinky private constructor is used to indicate all such cases.
+    pub(crate) fn with_client(domain: HyperlaneDomain, aptos_client: AptosClient) -> Self {
         AptosHpProvider {
             domain,
             aptos_client,
@@ -32,10 +43,12 @@ impl HyperlaneChain for AptosHpProvider {
         &self.domain
     }
 
+    // Investigate the trait design: why does this method need to return
+    // a boxed provider, while HyperlaneProvider is also a supertrait?
     fn provider(&self) -> Box<dyn HyperlaneProvider> {
-        Box::new(AptosHpProvider::new(
+        Box::new(AptosHpProvider::with_client(
             self.domain.clone(),
-            self.aptos_client.path_prefix_string(),
+            self.aptos_client.clone(),
         ))
     }
 }
@@ -94,6 +107,6 @@ impl HyperlaneProvider for AptosHpProvider {
     }
 
     async fn get_chain_metrics(&self) -> ChainResult<Option<ChainInfo>> {
-        todo!() // FIXME
+        Ok(None)
     }
 }

@@ -3,8 +3,8 @@ use ethers::prelude::Selector;
 use h_cosmos::CosmosProvider;
 use std::{collections::HashMap, sync::Arc};
 
-use eyre::{eyre, Context, Result};
 use ethers_prometheus::middleware::{ChainInfo, ContractInfo, PrometheusMiddlewareConf};
+use eyre::{eyre, Context, Result};
 use hyperlane_aptos as h_aptos;
 use hyperlane_core::{
     config::OperationBatchConfig, AggregationIsm, CcipReadIsm, ContractLocator, HyperlaneAbi,
@@ -195,8 +195,12 @@ impl ChainConf {
                     None,
                 )?;
                 Ok(Box::new(provider) as Box<dyn HyperlaneProvider>)
-            },
-            ChainConnectionConf::Aptos(_) => todo!(),
+            }
+            ChainConnectionConf::Aptos(conf) => {
+                let provider =
+                    h_aptos::AptosHpProvider::new(locator.domain.clone(), conf.url.clone());
+                Ok(Box::new(provider) as Box<dyn HyperlaneProvider>)
+            }
         }
         .context(ctx)
     }
@@ -232,7 +236,7 @@ impl ChainConf {
             ChainConnectionConf::Aptos(conf) => {
                 let keypair = self.aptos_signer().await.context(ctx)?;
                 h_aptos::AptosMailbox::new(conf, locator, keypair)
-                .map(|m| Box::new(m) as Box<dyn Mailbox>)
+                    .map(|m| Box::new(m) as Box<dyn Mailbox>)
                     .map_err(Into::into)
             }
         }
@@ -267,11 +271,9 @@ impl ChainConf {
 
                 Ok(Box::new(hook) as Box<dyn MerkleTreeHook>)
             }
-            ChainConnectionConf::Aptos(conf) => {
-                h_aptos::AptosMailbox::new(conf, locator, None)
-                    .map(|m| Box::new(m) as Box<dyn MerkleTreeHook>)
-                    .map_err(Into::into)
-            }
+            ChainConnectionConf::Aptos(conf) => h_aptos::AptosMailbox::new(conf, locator, None)
+                .map(|m| Box::new(m) as Box<dyn MerkleTreeHook>)
+                .map_err(Into::into),
         }
         .context(ctx)
     }
@@ -401,7 +403,6 @@ impl ChainConf {
                 let paymaster = Box::new(h_aptos::AptosInterchainGasPaymaster::new(conf, &locator));
                 Ok(paymaster as Box<dyn InterchainGasPaymaster>)
             }
-
         }
         .context(ctx)
     }

@@ -8,9 +8,7 @@ use hyperlane_core::{
     HyperlaneMessage, InterchainSecurityModule, ModuleType, H256, U256,
 };
 
-use crate::utils;
-use crate::AptosClient;
-use crate::ConnectionConf;
+use crate::{utils, AptosClient, AptosHpProvider, ConnectionConf};
 
 use aptos_sdk::types::account_address::AccountAddress;
 
@@ -27,7 +25,7 @@ pub struct AptosInterchainSecurityModule {
 impl AptosInterchainSecurityModule {
     /// Create a new sealevel InterchainSecurityModule
     pub fn new(conf: &ConnectionConf, locator: ContractLocator, payer: Option<Keypair>) -> Self {
-        let aptos_client = AptosClient::new(conf.url.to_string());
+        let aptos_client = AptosClient::new(conf.url.clone());
         let package_address =
             AccountAddress::from_bytes(<[u8; 32]>::from(locator.address)).unwrap();
         Self {
@@ -51,9 +49,9 @@ impl HyperlaneChain for AptosInterchainSecurityModule {
     }
 
     fn provider(&self) -> Box<dyn hyperlane_core::HyperlaneProvider> {
-        Box::new(crate::AptosHpProvider::new(
+        Box::new(AptosHpProvider::with_client(
             self.domain.clone(),
-            self.aptos_client.path_prefix_string(),
+            self.aptos_client.clone(),
         ))
     }
 }

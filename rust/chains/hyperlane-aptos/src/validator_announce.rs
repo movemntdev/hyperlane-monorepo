@@ -11,7 +11,9 @@ use crate::utils::{self, send_aptos_transaction};
 use crate::{convert_hex_string_to_h256, convert_keypair_to_aptos_account, AptosClient};
 use crate::{simulate_aptos_transaction, ConnectionConf};
 use hyperlane_core::{
-    Announcement, ChainCommunicationError, ChainResult, ContractLocator, FixedPointNumber, HyperlaneChain, HyperlaneContract, HyperlaneDomain, SignedType, TxOutcome, ValidatorAnnounce, H256, H512, U256
+    Announcement, ChainCommunicationError, ChainResult, ContractLocator, FixedPointNumber,
+    HyperlaneChain, HyperlaneContract, HyperlaneDomain, SignedType, TxOutcome, ValidatorAnnounce,
+    H256, H512, U256,
 };
 
 use aptos_sdk::{
@@ -48,7 +50,7 @@ pub struct AptosValidatorAnnounce {
 impl AptosValidatorAnnounce {
     /// Create a new Aptos ValidatorAnnounce
     pub fn new(conf: &ConnectionConf, locator: ContractLocator, payer: Option<Keypair>) -> Self {
-        let aptos_client = AptosClient::new(conf.url.to_string());
+        let aptos_client = AptosClient::new(conf.url.clone());
         let package_address =
             AccountAddress::from_bytes(<[u8; 32]>::from(locator.address)).unwrap();
         Self {
@@ -117,9 +119,9 @@ impl HyperlaneChain for AptosValidatorAnnounce {
     }
 
     fn provider(&self) -> Box<dyn hyperlane_core::HyperlaneProvider> {
-        Box::new(crate::AptosHpProvider::new(
+        Box::new(crate::AptosHpProvider::with_client(
             self.domain.clone(),
-            self.aptos_client.path_prefix_string(),
+            self.aptos_client.clone(),
         ))
     }
 }
@@ -178,11 +180,11 @@ impl ValidatorAnnounce for AptosValidatorAnnounce {
 
         let (tx_hash, is_success) = self
             .announce_contract_call(announcement)
-            .await
-            .map_err(|e| {
-                println!("tx error {}", e.to_string());
-                ChainCommunicationError::TransactionTimeout()
-            })?;
+                .await
+                .map_err(|e| {
+                    println!("tx error {}", e.to_string());
+                    ChainCommunicationError::TransactionTimeout()
+                })?;
 
         Ok(TxOutcome {
             transaction_id: H512::from(convert_hex_string_to_h256(&tx_hash).unwrap()),
