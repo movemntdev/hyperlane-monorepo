@@ -88,6 +88,17 @@ env $(cat ./config/validator.fuji.env | grep -v "#" | xargs) ./target/debug/vali
 
 #### Automated E2E Test
 
+For the E2E test run you need a local instance of postgres running. For macOS:
+`brew install postgresql@14`
+`brew services start postgresql@14`
+`brew services list`
+
+Then you need to create the postgres super user (if this hasn't been created already):
+`/opt/homebrew/opt/postgresql@14/bin/createuser -s postgres`
+
+And verify the connection:
+`psql -h localhost -U postgres -d postgres`
+
 To perform an automated e2e test of the agents locally, from within the `hyperlane-monorepo/rust` directory, run:
 
 ```bash

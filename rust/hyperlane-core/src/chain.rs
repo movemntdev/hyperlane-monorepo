@@ -226,7 +226,7 @@ impl KnownHyperlaneDomain {
         many_to_one!(match self {
             Mainnet: [
                 Ethereum, Avalanche, Arbitrum, Polygon, Optimism, BinanceSmartChain, Celo,
-                Moonbeam, Gnosis, MantaPacific, Neutron, Injective, InEvm, 
+                Moonbeam, Gnosis, MantaPacific, Neutron, Injective, InEvm,
             ],
             Testnet: [
                  Fuji, BinanceSmartChainTestnet, Alfajores, MoonbaseAlpha, Sepolia, ScrollSepolia, Chiado, AptosTestnet, PlumeTestnet
@@ -443,7 +443,7 @@ impl HyperlaneDomain {
         use HyperlaneDomainProtocol::*;
         let protocol = self.domain_protocol();
         many_to_one!(match protocol {
-            IndexMode::Block: [Ethereum, Cosmos, Aptos], 
+            IndexMode::Block: [Ethereum, Cosmos, Aptos],
             IndexMode::Sequence : [Sealevel, Fuel],
         })
     }
