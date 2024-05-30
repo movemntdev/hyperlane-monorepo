@@ -44,7 +44,7 @@ pub enum HyperlaneCosmosError {
     //Not working after protobuf version lock, for now, don't use this error.
     /// Protobuf error
     //#[error("{0}")]
-    //Protobuf(#[from] protobuf::ProtobufError), 
+    //Protobuf(#[from] protobuf::ProtobufError),
     /// Fallback providers failed
     #[error("Fallback providers failed. (Errors: {0:?})")]
     FallbackProvidersFailed(Vec<HyperlaneCosmosError>),

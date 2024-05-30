@@ -4,7 +4,8 @@ use aptos_sdk::rest_client::aptos_api_types::Transaction;
 use async_trait::async_trait;
 
 use hyperlane_core::{
-    BlockInfo, ChainInfo, ChainResult, HyperlaneChain, HyperlaneDomain, HyperlaneProvider, TxnInfo, TxnReceiptInfo, H256, U256
+    BlockInfo, ChainInfo, ChainResult, HyperlaneChain, HyperlaneDomain, HyperlaneProvider, TxnInfo,
+    TxnReceiptInfo, H256, U256,
 };
 
 use crate::{convert_hex_string_to_h256, AptosClient};

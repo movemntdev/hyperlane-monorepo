@@ -29,12 +29,12 @@ use tempfile::tempdir;
 
 use crate::{
     aptos::*,
+    aptos::*,
     config::Config,
     ethereum::start_anvil,
     invariants::{termination_invariants_met, SOL_MESSAGES_EXPECTED},
     metrics::agent_balance_sum,
     solana::*,
-    aptos::*,
     utils::{concat_path, make_static, stop_child, AgentHandles, ArbitraryData, TaskHandle},
 };
 
@@ -61,7 +61,6 @@ const RELAYER_KEYS: &[&str] = &[
     "0x892bf6949af4233e62f854cb3618bc1a3ee3341dc71ada08c4d5deca239acf4f",
     // sealeveltest2
     "0x892bf6949af4233e62f854cb3618bc1a3ee3341dc71ada08c4d5deca239acf4f",
-    
     // aptoslocalnet1
     "0x8cb68128b8749613f8df7612e4efd281f8d70f6d195c53a14c27fc75980446c1", // 0x8b43
     // aptoslocalnet2

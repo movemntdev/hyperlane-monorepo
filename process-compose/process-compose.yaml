@@ -43,7 +43,11 @@ processes:
 
   relayer:
     command: |
-      cd ../rust && cargo run -p relayer
+      cd ..
+      ./scripts/run-relayer.bash
+    depends_on:
+      deploy-eth-contracts:
+        condition: process_healthy
     readiness_probe:
       exec:
         command: echo "true"
