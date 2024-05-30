@@ -29,35 +29,9 @@ processes:
         command: echo "true"
 
   deploy-eth-contracts:
-    vars: 
-      RPC_URL: "{{ . RPC_URL }}"
-      PRIVATE_KEY: "{{ .PRIVATE_KEY }}"
-      MAILBOX_ADDRESS: ""
     command: |
-      cd ../solidity
-
-      forge create --rpc-url {{ .RPC_URL }} --private-key {{ .PRIVATE_KEY }}./contracts/client/Router.sol:Router
-      echo "Deployed Router.sol!"
-    
-      forge create --rpc-url {{ .RPC_URL }} --private-key {{ .PRIVATE_KEY }} ./contracts/client/GasRouter.sol:GasRouter
-      echo "Deployed GasRouter.sol!"
-
-      forge create --rpc-url {{ .RPC_URL }}  --private-key {{ .PRIVATE_KEY }} ./contracts/client/MailboxClient.sol:MailboxClient
-      echo "Deployed MailboxClient.sol!"
-
-      MAILBOX_ADDRESS=$(forge create --rpc-url {{ .RPC_URL }} --private-key {{ .PRIVATE_KEY }}  ./contracts/Mailbox.sol:Mailbox --constructor-args 666 | awk '/Deployed to:/ {print $3}')
-      echo "Deployed Mailbox.sol! to $MAILBOX_ADDRESS"
-
-      forge create --rpc-url {{ .RPC_URL }} --private-key {{ .PRIVATE_KEY }}  ./contracts/hooks/igp/InterchainGasPaymaster.sol:InterchainGasPaymaster
-      echo "Deployed InterchainGasPaymaster.sol! (hook)"
-
-      forge create --rpc-url {{ .RPC_URL }} --private-key {{ .PRIVATE_KEY }}  ./contracts/hooks/igp/StorageGasOracle.sol:StorageGasOracle
-      echo "Deployed StorageGasOracle.sol!"
-
-      forge create --rpc-url {{ .RPC_URL }} --private-key {{ .PRIVATE_KEY }}  ./contracts/hooks/MerkleTreeHook.sol:MerkleTreeHook --constructor-args $MAILBOX_ADDRESS
-      echo "Deployed MerkleTreeHook.sol!"
-      
-    is_tty: true
+      cd ..
+      ./scripts/deploy-eth-contracts.bash 
     depends_on:
       start-eth-chain:
         condition: process_healthy
