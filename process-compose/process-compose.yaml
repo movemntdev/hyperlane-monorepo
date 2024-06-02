@@ -9,7 +9,18 @@ processes:
   #   readiness_probe:
   #     exec:
   #       command: echo "true"
+  
+  build-cli:
+    command: |
+      cd ..
+      yarn install
+      yarn build
+      cd typescript/cli && hyperlane --help
 
+  deploy-core:
+    command: |
+      ./scripts/deploy-core.bash
+     
   start-eth-chain:
     command: |
       anvil --chain-id 666 --config-out "./anvil.json" --port 4242
