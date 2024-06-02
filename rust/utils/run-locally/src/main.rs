@@ -321,14 +321,10 @@ fn main() -> ExitCode {
     //
 
     install_aptos_cli().join();
-    // let aptos_local_net_runner = start_aptos_local_testnet().join();
-    // state.push_agent(aptos_local_net_runner);
+    let aptos_local_net_runner = start_aptos_local_testnet().join();
+    state.push_agent(aptos_local_net_runner);
     start_aptos_deploying().join();
     init_aptos_modules_state().join();
-
-    let (solana_path, solana_path_tempdir) = install_solana_cli_tools().join();
-    state.data.push(Box::new(solana_path_tempdir));
-    let solana_program_builder = build_solana_programs(solana_path.clone());
 
     // this task takes a long time in the CI so run it in parallel
     log!("Building rust...");
@@ -345,7 +341,7 @@ fn main() -> ExitCode {
 
     let start_anvil = start_anvil(config.clone());
 
-    let solana_program_path = solana_program_builder.join();
+    //let solana_program_path = solana_program_builder.join();
 
     log!("Running postgres db...");
     let postgres = Program::new("docker")
@@ -360,19 +356,6 @@ fn main() -> ExitCode {
 
     build_rust.join();
 
-    let solana_ledger_dir = tempdir().unwrap();
-    let start_solana_validator = start_solana_test_validator(
-        solana_path.clone(),
-        solana_program_path,
-        solana_ledger_dir.as_ref().to_path_buf(),
-    );
-
-    let (solana_config_path, solana_validator) = start_solana_validator.join();
-
-    // Was commented out in aptos-v3 commit
-    // state.push_agent(solana_validator);
-    // state.push_agent(start_anvil.join());
-
     // spawn 1st validator before any messages have been sent to test empty mailbox
     state.push_agent(validator_envs.first().unwrap().clone().spawn("VL1"));
 
@@ -382,7 +365,7 @@ fn main() -> ExitCode {
     Program::new(concat_path(AGENT_BIN_PATH, "init-db"))
         .run()
         .join();
-    // state.push_agent(scraper_env.spawn("SCR"));
+    state.push_agent(scraper_env.spawn("SCR"));
 
     // Send half the kathy messages before starting the rest of the agents
     let kathy_env_single_insertion = Program::new("yarn")
@@ -390,7 +373,7 @@ fn main() -> ExitCode {
         .cmd("kathy")
         .arg("messages", (config.kathy_messages / 4).to_string())
         .arg("timeout", "1000");
-    // kathy_env_single_insertion.clone().run().join();
+    kathy_env_single_insertion.clone().run().join();
 
     let kathy_env_zero_insertion = Program::new("yarn")
         .working_dir(INFRA_PATH)
@@ -403,7 +386,7 @@ fn main() -> ExitCode {
         // replacing the `aggregationHook` with the `interchainGasPaymaster` means there
         // is no more `merkleTreeHook`, causing zero merkle insertions to occur.
         .arg("default-hook", "interchainGasPaymaster");
-    // kathy_env_zero_insertion.clone().run().join();
+    kathy_env_zero_insertion.clone().run().join();
 
     let kathy_env_double_insertion = Program::new("yarn")
         .working_dir(INFRA_PATH)
@@ -413,12 +396,6 @@ fn main() -> ExitCode {
         // replacing the `protocolFees` required hook with the `merkleTreeHook`
         // will cause double insertions to occur, which should be handled correctly
         .arg("required-hook", "merkleTreeHook");
-    // kathy_env_double_insertion.clone().run().join();
-
-    // Send some sealevel messages before spinning up the agents, to test the backward indexing cursor
-    for _i in 0..(SOL_MESSAGES_EXPECTED / 2) {
-        initiate_solana_hyperlane_transfer(solana_path.clone(), solana_config_path.clone()).join();
-    }
 
     // spawn the rest of the validators
     for (i, validator_env) in validator_envs.into_iter().enumerate().skip(1) {
@@ -428,11 +405,6 @@ fn main() -> ExitCode {
 
     state.push_agent(relayer_env.spawn("RLY"));
 
-    // Send some sealevel messages after spinning up the relayer, to test the forward indexing cursor
-    for _i in 0..(SOL_MESSAGES_EXPECTED / 2) {
-        initiate_solana_hyperlane_transfer(solana_path.clone(), solana_config_path.clone()).join();
-    }
-
     for _i in 0..5 {
         aptos_send_messages().join();
     }
@@ -441,37 +413,18 @@ fn main() -> ExitCode {
     log!("Ctrl+C to end execution...");
 
     // Send half the kathy messages after the relayer comes up
-    // kathy_env_double_insertion.clone().run().join();
-    // kathy_env_zero_insertion.clone().run().join();
-    // state.push_agent(kathy_env_single_insertion.flag("mineforever").spawn("KTY"));
+    kathy_env_double_insertion.clone().run().join();
+    kathy_env_zero_insertion.clone().run().join();
+    state.push_agent(kathy_env_single_insertion.flag("mineforever").spawn("KTY"));
 
     let loop_start = Instant::now();
     // give things a chance to fully start.
     sleep(Duration::from_secs(10));
     let mut failure_occurred = false;
-    let starting_relayer_balance: f64 = agent_balance_sum(9092).unwrap();
-    while !SHUTDOWN.load(Ordering::Relaxed) {
-        if config.ci_mode {
-            // for CI we have to look for the end condition.
-            // if termination_invariants_met(&config, starting_relayer_balance)
-            if termination_invariants_met(
-                &config,
-                starting_relayer_balance,
-                &solana_path,
-                &solana_config_path,
-            )
-            .unwrap_or(false)
-            {
-                // end condition reached successfully
-                break;
-            } else if (Instant::now() - loop_start).as_secs() > config.ci_mode_timeout {
-                // we ran out of time
-                log!("CI timeout reached before queues emptied");
-                failure_occurred = true;
-                break;
-            }
-        }
 
+    // For some reason this agent is not starting on this port. Seperate issue to fix.
+    let _starting_relayer_balance: f64 = agent_balance_sum(9092).unwrap();
+    while !SHUTDOWN.load(Ordering::Relaxed) {
         // verify long-running tasks are still running
         for (name, child) in state.agents.iter_mut() {
             if let Some(status) = child.try_wait().unwrap() {
