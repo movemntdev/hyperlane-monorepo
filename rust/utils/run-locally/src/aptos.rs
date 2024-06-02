@@ -13,27 +13,13 @@ use tempfile::{tempdir, NamedTempFile};
 pub fn install_aptos_cli() {
     log!("Installing Aptos CLI");
     // aptos node run-local-testnet --with-faucet --faucet-port 8081 --force-restart --assume-yes
-    let aptos_cli_dir = tempdir().unwrap();
-    Program::new("curl")
-        .flag("location")
-        .flag("silent")
-        .arg("output", "install_aptos_cli.py")
-        .working_dir(aptos_cli_dir.as_ref().to_str().unwrap())
-        .cmd(format!("https://aptos.dev/scripts/install_cli.py"))
-        .run()
-        .join();
-    Program::new("python3")
-        .working_dir(aptos_cli_dir.as_ref().to_str().unwrap())
-        .cmd(format!("install_aptos_cli.py"))
-        .run()
-        .join();
 }
 
 #[apply(as_task)]
 pub fn start_aptos_local_testnet() -> AgentHandles {
     log!("Running Aptos Local Testnet");
     // aptos node run-local-testnet --with-faucet --faucet-port 8081 --force-restart --assume-yes
-    let local_net_program = Program::new("/root/.local/bin/aptos")
+    let local_net_program = Program::new("/opt/homebrew/bin/aptos")
         .cmd("node")
         .cmd("run-local-testnet")
         .flag("with-faucet")

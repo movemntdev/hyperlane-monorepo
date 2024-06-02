@@ -423,11 +423,12 @@ impl WasmGrpcProvider {
                     //     .await
                     //     .map_err(Into::<HyperlaneCosmosError>::into)?;
 
-                    //@TODO remove this, this was just to solve rust v bump. 
-                    // create a dummy response that satisfies the type for now 
-                    let response = injective_std::types::cosmos::auth::v1beta1::QueryAccountResponse {
-                        account: None,
-                    };
+                    //@TODO remove this, this was just to solve rust v bump.
+                    // create a dummy response that satisfies the type for now
+                    let response =
+                        injective_std::types::cosmos::auth::v1beta1::QueryAccountResponse {
+                            account: None,
+                        };
 
                     Ok(response)
                 };

@@ -39,7 +39,7 @@ impl ScraperDb {
         enum QueryAs {
             Nonce,
         }
-    
+
         let last_nonce = message::Entity::find()
             .filter(message::Column::Origin.eq(origin_domain))
             .filter(message::Column::OriginMailbox.eq(address_to_bytes(origin_mailbox)))
@@ -50,16 +50,16 @@ impl ScraperDb {
             .await?
             .map(|t| t.0.map(|idx| idx as u32))
             .flatten();
-    
+
         debug!(
             ?last_nonce,
             origin_domain,
             ?origin_mailbox,
             "Queried last message nonce from database"
         );
-    
+
         Ok(last_nonce)
-    } 
+    }
 
     /// Get the dispatched message associated with a nonce.
     #[instrument(skip(self))]
@@ -118,8 +118,8 @@ impl ScraperDb {
             .into_tuple::<(Option<i64>,)>()
             .one(&self.0)
             .await?;
-        
-        // a bit of a nasty use of flatten but this gets around the issue of 
+
+        // a bit of a nasty use of flatten but this gets around the issue of
         // not being able to derive EnumIter for Query As.
         Ok(tx_id.map(|t| t.0).flatten())
     }
