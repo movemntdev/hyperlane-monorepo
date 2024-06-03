@@ -1,0 +1,14 @@
+# Configs for describing chain metadata for use in Hyperlane deployments or apps
+# Consists of a map of chain names to metadata
+# Schema here: https://github.com/hyperlane-xyz/hyperlane-monorepo/blob/main/typescript/sdk/src/metadata/chainMetadataTypes.ts
+---
+chainId: 4 
+domainId: 4 
+name: aptoslocalnet1 
+protocol: aptos 
+rpcUrls:
+  - http: http://127.0.0.1:8080
+nativeToken:
+  name: Aptos 
+  symbol: APT 
+  decimals: 18

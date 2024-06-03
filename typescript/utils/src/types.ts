@@ -1,6 +1,7 @@
 import type { BigNumber, ethers } from 'ethers';
 
 export enum ProtocolType {
+  Aptos = 'aptos',
   Ethereum = 'ethereum',
   Sealevel = 'sealevel',
   Cosmos = 'cosmos',
@@ -12,6 +13,7 @@ export const ProtocolSmallestUnit = {
   [ProtocolType.Ethereum]: 'wei',
   [ProtocolType.Sealevel]: 'lamports',
   [ProtocolType.Cosmos]: 'uATOM',
+  [ProtocolType.Aptos]: 'octa',
 };
 
 /********* BASIC TYPES *********/

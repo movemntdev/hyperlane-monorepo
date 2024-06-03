@@ -12,11 +12,11 @@ use hyperlane_core::SequenceAwareIndexer;
 //use hyperlane_core::InterchainGasPayment;
 use hyperlane_core::{
     accumulator::incremental::IncrementalMerkle, ChainCommunicationError, ChainResult, Checkpoint,
-    MerkleTreeHook, H256
+    MerkleTreeHook, H256,
 };
+use std::num::NonZeroU64;
 use std::ops::RangeInclusive;
 use std::str::FromStr;
-use std::{num::NonZeroU64};
 use tracing::instrument;
 
 #[async_trait]
@@ -93,5 +93,4 @@ impl SequenceAwareIndexer<MerkleTreeInsertion> for AptosMerkleTreeHookIndexer {
     async fn latest_sequence_count_and_tip(&self) -> ChainResult<(Option<u32>, u32)> {
         Ok((None, 0))
     }
-} 
-
+}

@@ -11,7 +11,9 @@ use crate::utils::{self, send_aptos_transaction};
 use crate::{convert_hex_string_to_h256, convert_keypair_to_aptos_account, AptosClient};
 use crate::{simulate_aptos_transaction, ConnectionConf};
 use hyperlane_core::{
-    Announcement, ChainCommunicationError, ChainResult, ContractLocator, FixedPointNumber, HyperlaneChain, HyperlaneContract, HyperlaneDomain, SignedType, TxOutcome, ValidatorAnnounce, H256, H512, U256
+    Announcement, ChainCommunicationError, ChainResult, ContractLocator, FixedPointNumber,
+    HyperlaneChain, HyperlaneContract, HyperlaneDomain, SignedType, TxOutcome, ValidatorAnnounce,
+    H256, H512, U256,
 };
 
 use aptos_sdk::{
@@ -167,22 +169,19 @@ impl ValidatorAnnounce for AptosValidatorAnnounce {
     }
 
     #[instrument(err, ret, skip(self))]
-    async fn announce(
-        &self,
-        announcement: SignedType<Announcement>,
-    ) -> ChainResult<TxOutcome> {
+    async fn announce(&self, announcement: SignedType<Announcement>) -> ChainResult<TxOutcome> {
         info!(
             "Announcing Aptos Validator _announcement ={:?}",
             announcement
         );
 
-        let (tx_hash, is_success) = self
-            .announce_contract_call(announcement)
-            .await
-            .map_err(|e| {
-                println!("tx error {}", e.to_string());
-                ChainCommunicationError::TransactionTimeout()
-            })?;
+        let (tx_hash, is_success) =
+            self.announce_contract_call(announcement)
+                .await
+                .map_err(|e| {
+                    println!("tx error {}", e.to_string());
+                    ChainCommunicationError::TransactionTimeout()
+                })?;
 
         Ok(TxOutcome {
             transaction_id: H512::from(convert_hex_string_to_h256(&tx_hash).unwrap()),

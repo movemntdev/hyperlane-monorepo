@@ -12,8 +12,7 @@ import {
 } from '@hyperlane-xyz/sdk';
 import { addressToBytes32, sleep } from '@hyperlane-xyz/utils';
 
-const ANVIL_KEY =
-  '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80';
+const ANVIL_KEY = '{{ .PRIVATE_KEY }}';
 
 enum MailboxHookType {
   REQUIRED = 'requiredHook',

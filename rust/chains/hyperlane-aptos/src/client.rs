@@ -1,4 +1,4 @@
-use aptos_sdk::{rest_client::Client};
+use aptos_sdk::rest_client::Client;
 use std::str::FromStr;
 use url::Url;
 

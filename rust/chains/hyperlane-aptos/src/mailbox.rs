@@ -340,8 +340,8 @@ impl Indexer<HyperlaneMessage> for AptosMailboxIndexer {
 #[async_trait]
 impl Indexer<H256> for AptosMailboxIndexer {
     async fn fetch_logs(
-        &self, 
-        range: RangeInclusive<u32>
+        &self,
+        range: RangeInclusive<u32>,
     ) -> ChainResult<Vec<(Indexed<H256>, LogMeta)>> {
         get_filtered_events::<H256, MsgProcessEventData>(
             &self.aptos_client,

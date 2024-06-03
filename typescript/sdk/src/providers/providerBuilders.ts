@@ -1,3 +1,4 @@
+import { Aptos, AptosConfig, Network } from '@aptos-labs/ts-sdk';
 import { CosmWasmClient } from '@cosmjs/cosmwasm-stargate';
 import { StargateClient } from '@cosmjs/stargate';
 import { Connection } from '@solana/web3.js';
@@ -9,6 +10,7 @@ import { ProtocolType, isNumeric } from '@hyperlane-xyz/utils';
 import { ChainMetadata, RpcUrl } from '../metadata/chainMetadataTypes.js';
 
 import {
+  AptosProvider,
   CosmJsProvider,
   CosmJsWasmProvider,
   EthersV5Provider,
@@ -109,6 +111,20 @@ export function defaultCosmJsWasmProviderBuilder(
   };
 }
 
+export function defaultAptosProviderBuilder(
+  rpcUrls: RpcUrl[],
+  _network: number | string,
+): AptosProvider {
+  if (!rpcUrls.length) throw new Error('No RPC URLs provided');
+  //@TODO: We hard set the to local for now, but need a way to
+  // switch this via the rpcUrls array
+  const config = new AptosConfig({ network: Network.LOCAL });
+  return {
+    type: ProviderType.Aptos,
+    provider: new Aptos(config),
+  };
+}
+
 // Kept for backwards compatibility
 export function defaultProviderBuilder(
   rpcUrls: RpcUrl[],
@@ -127,6 +143,7 @@ export const defaultProviderBuilderMap: ProviderBuilderMap = {
   [ProviderType.SolanaWeb3]: defaultSolProviderBuilder,
   [ProviderType.CosmJs]: defaultCosmJsProviderBuilder,
   [ProviderType.CosmJsWasm]: defaultCosmJsWasmProviderBuilder,
+  [ProviderType.Aptos]: defaultAptosProviderBuilder,
 };
 
 export const protocolToDefaultProviderBuilder: Record<
@@ -136,4 +153,5 @@ export const protocolToDefaultProviderBuilder: Record<
   [ProtocolType.Ethereum]: defaultEthersV5ProviderBuilder,
   [ProtocolType.Sealevel]: defaultSolProviderBuilder,
   [ProtocolType.Cosmos]: defaultCosmJsWasmProviderBuilder,
+  [ProtocolType.Aptos]: defaultAptosProviderBuilder,
 };
