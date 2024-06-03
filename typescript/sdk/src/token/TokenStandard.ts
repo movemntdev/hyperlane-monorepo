@@ -40,6 +40,9 @@ export enum TokenStandard {
   CwHypNative = 'CwHypNative',
   CwHypCollateral = 'CwHypCollateral',
   CwHypSynthetic = 'CwHypSynthetic',
+
+  // Aptos
+  AptosNative = 'AptosNative',
 }
 
 // Allows for omission of protocol field in token args
@@ -76,6 +79,9 @@ export const TOKEN_STANDARD_TO_PROTOCOL: Record<TokenStandard, ProtocolType> = {
   CwHypNative: ProtocolType.Cosmos,
   CwHypCollateral: ProtocolType.Cosmos,
   CwHypSynthetic: ProtocolType.Cosmos,
+
+  // Aptos
+  AptosNative: ProtocolType.Aptos,
 };
 
 export const TOKEN_STANDARD_TO_PROVIDER_TYPE: Record<
@@ -153,4 +159,5 @@ export const PROTOCOL_TO_NATIVE_STANDARD: Record<ProtocolType, TokenStandard> =
     [ProtocolType.Ethereum]: TokenStandard.EvmNative,
     [ProtocolType.Cosmos]: TokenStandard.CosmosNative,
     [ProtocolType.Sealevel]: TokenStandard.SealevelNative,
+    [ProtocolType.Aptos]: TokenStandard.AptosNative,
   };

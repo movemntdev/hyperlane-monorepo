@@ -1,3 +1,4 @@
+import type { Aptos } from '@aptos-labs/ts-sdk';
 import type {
   CosmWasmClient,
   Contract as CosmWasmContract,
@@ -32,6 +33,7 @@ export enum ProviderType {
   SolanaWeb3 = 'solana-web3',
   CosmJs = 'cosmjs',
   CosmJsWasm = 'cosmjs-wasm',
+  Aptos = 'aptos',
 }
 
 export const PROTOCOL_TO_DEFAULT_PROVIDER_TYPE: Record<
@@ -41,6 +43,7 @@ export const PROTOCOL_TO_DEFAULT_PROVIDER_TYPE: Record<
   [ProtocolType.Ethereum]: ProviderType.EthersV5,
   [ProtocolType.Sealevel]: ProviderType.SolanaWeb3,
   [ProtocolType.Cosmos]: ProviderType.CosmJsWasm,
+  [ProtocolType.Aptos]: ProviderType.Aptos,
 };
 
 export type ProviderMap<Value> = Partial<Record<ProviderType, Value>>;
@@ -130,13 +133,19 @@ export interface CosmJsWasmProvider
   provider: Promise<CosmWasmClient>;
 }
 
+export interface AptosProvider extends TypedProviderBase<Aptos> {
+  type: ProviderType.Aptos;
+  provider: Aptos;
+}
+
 export type TypedProvider =
   | EthersV5Provider
   // | EthersV6Provider
   | ViemProvider
   | SolanaWeb3Provider
   | CosmJsProvider
-  | CosmJsWasmProvider;
+  | CosmJsWasmProvider
+  | AptosProvider;
 
 /**
  * Contracts with discriminated union of provider type
@@ -236,7 +245,8 @@ export type TypedTransaction =
   | ViemTransaction
   | SolanaWeb3Transaction
   | CosmJsTransaction
-  | CosmJsWasmTransaction;
+  | CosmJsWasmTransaction
+  | AptosProvider;
 
 /**
  * Transaction receipt/response with discriminated union of provider type
