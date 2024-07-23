@@ -37,7 +37,7 @@ REST_API_URL="http://0.0.0.0:8080/v1"
 # inits
 function init_ln1_modules() {  
   # To make use of aptos cli
-  export PATH="/root/.local/bin:$PATH"
+  export PATH="/home/coin1/.local/bin:$PATH"
 
   cd "$(pwd)"
   # init validator
@@ -56,7 +56,7 @@ function init_ln1_modules() {
 
 function init_ln2_modules() {  
   # To make use of aptos cli
-  export PATH="/root/.local/bin:$PATH"
+  export PATH="/home/coin1/.local/bin:$PATH"
 
   cd "$(pwd)"
   # init validator
@@ -75,7 +75,7 @@ function init_ln2_modules() {
 
 function send_hello_ln1_to_ln2() {
   
-  export PATH="/root/.local/bin:$PATH"
+  export PATH="/home/coin1/.local/bin:$PATH"
 
   cd "$(pwd)"
 
@@ -83,7 +83,7 @@ function send_hello_ln1_to_ln2() {
 }
 function send_hello_ln2_to_ln1() {
   
-  export PATH="/root/.local/bin:$PATH"
+  export PATH="/home/coin1/.local/bin:$PATH"
 
   cd "$(pwd)"
 

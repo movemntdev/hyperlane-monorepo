@@ -417,7 +417,7 @@ fn main() -> ExitCode {
     sleep(Duration::from_secs(5));
     let mut failure_occurred = false;
     while !SHUTDOWN.load(Ordering::Relaxed) {
-        if config.ci_mode {
+      //  if config.ci_mode {
             // for CI we have to look for the end condition.
             // if termination_invariants_met(&config, &solana_path, &solana_config_path)
             if termination_invariants_met(&config, &Path::new(""), &Path::new("")).unwrap_or(false)
@@ -430,7 +430,7 @@ fn main() -> ExitCode {
                 failure_occurred = true;
                 break;
             }
-        }
+      //  }
 
         // verify long-running tasks are still running
         for (name, child) in state.agents.iter_mut() {

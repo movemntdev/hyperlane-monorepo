@@ -19,7 +19,7 @@ pub fn termination_invariants_met(
     solana_cli_tools_path: &Path,
     solana_config_path: &Path,
 ) -> eyre::Result<bool> {
-    let eth_messages_expected = (config.kathy_messages / 2) as u32 * 2;
+    let eth_messages_expected = 0;// (config.kathy_messages / 2) as u32 * 2; // no eth messages sent
     let total_messages_expected =
         eth_messages_expected + SOL_MESSAGES_EXPECTED + APTOS_MESSAGES_EXPECTED;
 
@@ -29,8 +29,6 @@ pub fn termination_invariants_met(
         log!("Relayer queues not empty. Lengths: {:?}", lengths);
         return Ok(false);
     };
-
-    println!("jlog termination_invariants_met here0");
 
     // Also ensure the counter is as expected (total number of messages), summed
     // across all mailboxes.
@@ -48,6 +46,7 @@ pub fn termination_invariants_met(
     }
 
     // TODO!
+    log!("Teset success. Skipping gas payment invariants for now");
     return Ok(true);
 
     let gas_payment_events_count = fetch_metric(

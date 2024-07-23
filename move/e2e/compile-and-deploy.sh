@@ -3,7 +3,7 @@
 #cd ../validator-announce && aptos move compile
 
 # To make use of aptos cli
-export PATH="/root/.local/bin:$PATH"
+export PATH="/home/coin1/.local/bin:$PATH"
 
 function aptos_init() {
   aptos init --assume-yes --network custom --rest-url "http://0.0.0.0:8080/v1" --faucet-url "http://127.0.0.1:8081" --encoding hex --private-key-file $1

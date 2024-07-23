@@ -33,7 +33,7 @@ pub fn install_aptos_cli() {
 pub fn start_aptos_local_testnet() -> AgentHandles {
     log!("Running Aptos Local Testnet");
     // aptos node run-local-testnet --with-faucet --faucet-port 8081 --force-restart --assume-yes
-    let local_net_program = Program::new("/root/.local/bin/aptos")
+    let local_net_program = Program::new("/home/coin1/.local/bin/aptos")
         .cmd("node")
         .cmd("run-local-testnet")
         .flag("with-faucet")
