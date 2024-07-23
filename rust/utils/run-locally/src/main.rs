@@ -13,13 +13,7 @@
 //! else false.
 
 use std::path::Path;
-use std::{
-    fs,
-    process::{Child, ExitCode},
-    sync::atomic::{AtomicBool, Ordering},
-    thread::sleep,
-    time::{Duration, Instant},
-};
+use std::{env, fs, process::{Child, ExitCode}, sync::atomic::{AtomicBool, Ordering}, thread::sleep, time::{Duration, Instant}};
 
 use tempfile::tempdir;
 
@@ -141,6 +135,10 @@ fn main() -> ExitCode {
 
     assert_eq!(VALIDATOR_ORIGIN_CHAINS.len(), VALIDATOR_KEYS.len());
     const VALIDATOR_COUNT: usize = VALIDATOR_KEYS.len();
+
+    // if non-null run test message loop forewer for local testing
+    let is_loop = env::var("HYB_BASE_LOOP").map_or_else(|_| false, |v| v != "0" && v != "false");
+    log!("Will run in loop mode. Press CTRL-C to stop: {}", is_loop);
 
     let config = Config::load();
 
@@ -417,7 +415,7 @@ fn main() -> ExitCode {
     sleep(Duration::from_secs(5));
     let mut failure_occurred = false;
     while !SHUTDOWN.load(Ordering::Relaxed) {
-      //  if config.ci_mode {
+        if !is_loop {
             // for CI we have to look for the end condition.
             // if termination_invariants_met(&config, &solana_path, &solana_config_path)
             if termination_invariants_met(&config, &Path::new(""), &Path::new("")).unwrap_or(false)
@@ -430,7 +428,7 @@ fn main() -> ExitCode {
                 failure_occurred = true;
                 break;
             }
-      //  }
+        }
 
         // verify long-running tasks are still running
         for (name, child) in state.agents.iter_mut() {

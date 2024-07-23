@@ -1,3 +1,4 @@
+use std::env;
 use std::process::{Command, Stdio};
 use std::thread::sleep;
 use std::time::Duration;
@@ -33,7 +34,8 @@ pub fn install_aptos_cli() {
 pub fn start_aptos_local_testnet() -> AgentHandles {
     log!("Running Aptos Local Testnet");
     // aptos node run-local-testnet --with-faucet --faucet-port 8081 --force-restart --assume-yes
-    let local_net_program = Program::new("/home/coin1/.local/bin/aptos")
+    let hyp_base_local_bin = env::var("HYB_BASE_LOCAL_BIN").unwrap_or_else(|_| "/root/.local/bin".to_string());
+    let local_net_program = Program::new(format!("{}/aptos", hyp_base_local_bin))
         .cmd("node")
         .cmd("run-local-testnet")
         .flag("with-faucet")

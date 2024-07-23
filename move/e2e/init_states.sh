@@ -34,10 +34,17 @@ BSCTESTNET_DOMAIN=97
 REST_API_URL="http://0.0.0.0:8080/v1"
 # VALIDATOR_ETH_SIGNER="0x598264ff31f198f6071226b2b7e9ce360163accd"
 
+if [ -z "${HYB_BASE_LOCAL_BIN}" ]; then
+  export LOCAL_BIN="/root/.local/bin"
+else
+  export LOCAL_BIN="${HYB_BASE_LOCAL_BIN}"
+fi
+
+
 # inits
 function init_ln1_modules() {  
   # To make use of aptos cli
-  export PATH="/home/coin1/.local/bin:$PATH"
+  export PATH="${LOCAL_BIN}:$PATH"
 
   cd "$(pwd)"
   # init validator
@@ -56,7 +63,7 @@ function init_ln1_modules() {
 
 function init_ln2_modules() {  
   # To make use of aptos cli
-  export PATH="/home/coin1/.local/bin:$PATH"
+  export PATH="${LOCAL_BIN}:$PATH"
 
   cd "$(pwd)"
   # init validator
@@ -75,7 +82,7 @@ function init_ln2_modules() {
 
 function send_hello_ln1_to_ln2() {
   
-  export PATH="/home/coin1/.local/bin:$PATH"
+  export PATH="${LOCAL_BIN}:$PATH"
 
   cd "$(pwd)"
 
@@ -83,7 +90,7 @@ function send_hello_ln1_to_ln2() {
 }
 function send_hello_ln2_to_ln1() {
   
-  export PATH="/home/coin1/.local/bin:$PATH"
+  export PATH="${LOCAL_BIN}:$PATH"
 
   cd "$(pwd)"
 
