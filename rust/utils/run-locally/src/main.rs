@@ -13,7 +13,13 @@
 //! else false.
 
 use std::path::Path;
-use std::{env, fs, process::{Child, ExitCode}, sync::atomic::{AtomicBool, Ordering}, thread::sleep, time::{Duration, Instant}};
+use std::{
+    env, fs,
+    process::{Child, ExitCode},
+    sync::atomic::{AtomicBool, Ordering},
+    thread::sleep,
+    time::{Duration, Instant},
+};
 
 use tempfile::tempdir;
 

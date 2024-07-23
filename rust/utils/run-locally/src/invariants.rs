@@ -19,7 +19,7 @@ pub fn termination_invariants_met(
     solana_cli_tools_path: &Path,
     solana_config_path: &Path,
 ) -> eyre::Result<bool> {
-    let eth_messages_expected = 0;// (config.kathy_messages / 2) as u32 * 2; // no eth messages sent
+    let eth_messages_expected = 0; // (config.kathy_messages / 2) as u32 * 2; // no eth messages sent
     let total_messages_expected =
         eth_messages_expected + SOL_MESSAGES_EXPECTED + APTOS_MESSAGES_EXPECTED;
 
