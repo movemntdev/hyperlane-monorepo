@@ -148,14 +148,6 @@ fn main() -> ExitCode {
 
     let config = Config::load();
 
-    let solana_checkpoint_path = Path::new(SOLANA_CHECKPOINT_LOCATION);
-    fs::remove_dir_all(solana_checkpoint_path).unwrap_or_default();
-
-    // let checkpoints_dirs: Vec<DynPath> = (0..VALIDATOR_COUNT - 1)
-    //     .map(|_| Box::new(tempdir().unwrap()) as DynPath)
-    //     .chain([Box::new(solana_checkpoint_path) as DynPath])
-    //     .collect();
-
     let checkpoints_dirs: Vec<DynPath> = (0..VALIDATOR_COUNT)
         .map(|_| Box::new(tempdir().unwrap()) as DynPath)
         .collect();
@@ -313,10 +305,6 @@ fn main() -> ExitCode {
     // Ready to run...
     //
 
-    // let (solana_path, solana_path_tempdir) = install_solana_cli_tools().join();
-    // state.data.push(Box::new(solana_path_tempdir));
-    // let solana_program_builder = build_solana_programs(solana_path.clone());
-
     // aptos
     install_aptos_cli().join();
     let local_net_runner = start_aptos_local_testnet().join();
@@ -333,13 +321,10 @@ fn main() -> ExitCode {
         .arg("bin", "validator")
         .arg("bin", "scraper")
         .arg("bin", "init-db")
-        // .arg("bin", "hyperlane-sealevel-client")
         .filter_logs(|l| !l.contains("workspace-inheritance"))
         .run();
 
     // let start_anvil = start_anvil(config.clone());
-
-    // let solana_program_path = solana_program_builder.join();
 
     log!("Running postgres db...");
     let postgres = Program::new("docker")
@@ -353,17 +338,6 @@ fn main() -> ExitCode {
     state.push_agent(postgres);
 
     build_rust.join();
-
-    // let solana_ledger_dir = tempdir().unwrap();
-    // let start_solana_validator = start_solana_test_validator(
-    //     solana_path.clone(),
-    //     solana_program_path,
-    //     solana_ledger_dir.as_ref().to_path_buf(),
-    // );
-
-    // let (solana_config_path, solana_validator) = start_solana_validator.join();
-    // state.push_agent(solana_validator);
-    // state.push_agent(start_anvil.join());
 
     // spawn 1st validator before any messages have been sent to test empty mailbox
     state.push_agent(validator_envs.first().unwrap().clone().spawn("VL1"));
@@ -390,21 +364,11 @@ fn main() -> ExitCode {
         state.push_agent(validator);
     }
 
-    // Send some sealevel messages before spinning up the relayer, to test the backward indexing cursor
-    // for _i in 0..(SOL_MESSAGES_EXPECTED / 2) {
-    //     initiate_solana_hyperlane_transfer(solana_path.clone(), solana_config_path.clone()).join();
-    // }
-
     for _i in 0..(APTOS_MESSAGES_EXPECTED / 4) {
         aptos_send_messages().join();
     }
 
     state.push_agent(relayer_env.spawn("RLY"));
-
-    // Send some sealevel messages after spinning up the relayer, to test the forward indexing cursor
-    // for _i in 0..(SOL_MESSAGES_EXPECTED / 2) {
-    //     initiate_solana_hyperlane_transfer(solana_path.clone(), solana_config_path.clone()).join();
-    // }
 
     for _i in 0..(APTOS_MESSAGES_EXPECTED / 4) {
         aptos_send_messages().join();
@@ -422,8 +386,6 @@ fn main() -> ExitCode {
     let mut failure_occurred = false;
     while !SHUTDOWN.load(Ordering::Relaxed) {
         if !is_loop {
-            // for CI we have to look for the end condition.
-            // if termination_invariants_met(&config, &solana_path, &solana_config_path)
             if termination_invariants_met(&config, &Path::new(""), &Path::new("")).unwrap_or(false)
             {
                 // end condition reached successfully
