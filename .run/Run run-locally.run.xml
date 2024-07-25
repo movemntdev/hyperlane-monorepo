@@ -3,7 +3,7 @@
     <option name="command" value="run --package run-locally --bin run-locally" />
     <option name="workingDirectory" value="file://$PROJECT_DIR$/rust" />
     <envs>
-      <env name="HYB_BASE_LOCAL_BIN" value="$USER_HOME$/.local/bin" />
+      <env name="HYP_BASE_LOCAL_BIN" value="$USER_HOME$/.local/bin" />
     </envs>
     <option name="emulateTerminal" value="true" />
     <option name="channel" value="DEFAULT" />

@@ -2,10 +2,10 @@
 #cd ../examples && aptos move compile
 #cd ../validator-announce && aptos move compile
 
-if [ -z "${HYB_BASE_LOCAL_BIN}" ]; then
+if [ -z "${HYP_BASE_LOCAL_BIN}" ]; then
   export LOCAL_BIN="/root/.local/bin"
 else
-  export LOCAL_BIN="${HYB_BASE_LOCAL_BIN}"
+  export LOCAL_BIN="${HYP_BASE_LOCAL_BIN}"
 fi
 
 

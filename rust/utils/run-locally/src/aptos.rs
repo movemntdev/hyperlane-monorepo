@@ -36,13 +36,13 @@ pub fn start_aptos_local_testnet() -> AgentHandles {
     log!("Running Aptos Local Testnet");
     // aptos node run-local-testnet --with-faucet --faucet-port 8081 --force-restart --assume-yes
     let hyp_base_local_bin =
-        env::var("HYB_BASE_LOCAL_BIN").unwrap_or_else(|_| {
+        env::var("HYP_BASE_LOCAL_BIN").unwrap_or_else(|_| {
             match dirs::home_dir() {
                 Some(mut path) => {
                     path.push(".local/bin");
                     path.to_str().unwrap().to_string()
                 }
-                None => panic!("Cannot find home directory. Specify HYB_BASE_LOCAL_BIN instead where aptos client is located."),
+                None => panic!("Cannot find home directory. Specify HYP_BASE_LOCAL_BIN instead where aptos client is located."),
             }
         });
     log!("use aptos location: {}", hyp_base_local_bin);

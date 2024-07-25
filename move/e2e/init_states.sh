@@ -34,10 +34,10 @@ BSCTESTNET_DOMAIN=97
 REST_API_URL="http://0.0.0.0:8080/v1"
 # VALIDATOR_ETH_SIGNER="0x598264ff31f198f6071226b2b7e9ce360163accd"
 
-if [ -z "${HYB_BASE_LOCAL_BIN}" ]; then
+if [ -z "${HYP_BASE_LOCAL_BIN}" ]; then
   export LOCAL_BIN="$HOME/.local/bin"
 else
-  export LOCAL_BIN="${HYB_BASE_LOCAL_BIN}"
+  export LOCAL_BIN="${HYP_BASE_LOCAL_BIN}"
 fi
 
 
