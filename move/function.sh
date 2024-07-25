@@ -5,7 +5,7 @@ FUNCTION=$1
 #cd ../validator-announce && aptos move compile
 
 if [ -z "${HYB_BASE_LOCAL_BIN}" ]; then
-  export LOCAL_BIN="/root/.local/bin"
+  export LOCAL_BIN="$HOME/.local/bin"
 else
   export LOCAL_BIN="${HYB_BASE_LOCAL_BIN}"
 fi

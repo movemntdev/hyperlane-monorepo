@@ -44,7 +44,6 @@ cargo build
 ## Run local tests manually
 ```
 # in rust directory
-export HYB_BASE_LOCAL_BIN=$HOME/.local/bin
 ./run-local-aptos.sh
 ./init-local-aptos.sh
 ./run-validator.sh 0 # run validator for aptoslocal1
@@ -59,7 +58,6 @@ cd ../move/e2e
 # run-locally binary will send test messages between 2 set of aptos smart contracts,
 # validators will sign them, relayer will deliver signatures and test scraper counts them
 # in rust directory
-export HYB_BASE_LOCAL_BIN=$HOME/.local/bin
 ./target/debug/run-locally
 ...
 <E2E> E2E tests passed
@@ -69,7 +67,6 @@ export HYB_BASE_LOCAL_BIN=$HOME/.local/bin
 
 run tests in infinite mode
 ```angular2html
-export HYB_BASE_LOCAL_BIN=$HOME/.local/bin
 HYB_BASE_LOOP=1  ./target/debug/run-locally
 
 ```

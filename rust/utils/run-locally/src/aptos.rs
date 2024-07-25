@@ -9,6 +9,7 @@ use crate::utils::{as_task, concat_path, AgentHandles, ArbitraryData, TaskHandle
 use macro_rules_attribute::apply;
 
 use tempfile::{tempdir, NamedTempFile};
+use dirs;
 
 #[apply(as_task)]
 pub fn install_aptos_cli() {
@@ -35,7 +36,15 @@ pub fn start_aptos_local_testnet() -> AgentHandles {
     log!("Running Aptos Local Testnet");
     // aptos node run-local-testnet --with-faucet --faucet-port 8081 --force-restart --assume-yes
     let hyp_base_local_bin =
-        env::var("HYB_BASE_LOCAL_BIN").unwrap_or_else(|_| "/root/.local/bin".to_string());
+        env::var("HYB_BASE_LOCAL_BIN").unwrap_or_else(|_| {
+            match dirs::home_dir() {
+                Some(mut path) => {
+                    path.push(".local/bin");
+                    path.to_str().unwrap().to_string()
+                }
+                None => panic!("Cannot find home directory. Specify HYB_BASE_LOCAL_BIN instead where aptos client is located."),
+            }
+        });
     let local_net_program = Program::new(format!("{}/aptos", hyp_base_local_bin))
         .cmd("node")
         .cmd("run-local-testnet")
