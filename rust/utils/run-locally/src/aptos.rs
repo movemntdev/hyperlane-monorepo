@@ -45,6 +45,7 @@ pub fn start_aptos_local_testnet() -> AgentHandles {
                 None => panic!("Cannot find home directory. Specify HYB_BASE_LOCAL_BIN instead where aptos client is located."),
             }
         });
+    log!("use aptos location: {}", hyp_base_local_bin);
     let local_net_program = Program::new(format!("{}/aptos", hyp_base_local_bin))
         .cmd("node")
         .cmd("run-local-testnet")
