@@ -70,6 +70,7 @@ jobs:
       - name: run test
         run: ./target/release/run-locally
         env:
+          HYP_BASE_LOCAL_BIN: '/home/runner/.local/bin'
           E2E_CI_MODE: 'true'
           E2E_CI_TIMEOUT_SEC: '600'
           E2E_KATHY_MESSAGES: '20'
