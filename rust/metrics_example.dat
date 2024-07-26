@@ -1,0 +1,90 @@
+# HELP hyperlane_contract_sync_block_height Height of a recently observed block
+# TYPE hyperlane_contract_sync_block_height gauge
+hyperlane_contract_sync_block_height{agent="relayer",chain="aptoslocalnet1",data_type="dispatched_messages",hyperlane_baselib_version="0.1.0"} 259
+hyperlane_contract_sync_block_height{agent="relayer",chain="aptoslocalnet1",data_type="gas_payments",hyperlane_baselib_version="0.1.0"} 250
+hyperlane_contract_sync_block_height{agent="relayer",chain="aptoslocalnet2",data_type="dispatched_messages",hyperlane_baselib_version="0.1.0"} 259
+hyperlane_contract_sync_block_height{agent="relayer",chain="aptoslocalnet2",data_type="gas_payments",hyperlane_baselib_version="0.1.0"} 250
+# HELP hyperlane_contract_sync_stored_events Number of events stored into db
+# TYPE hyperlane_contract_sync_stored_events counter
+hyperlane_contract_sync_stored_events{agent="relayer",chain="aptoslocalnet1",data_type="dispatched_messages",hyperlane_baselib_version="0.1.0"} 10
+hyperlane_contract_sync_stored_events{agent="relayer",chain="aptoslocalnet1",data_type="gas_payments",hyperlane_baselib_version="0.1.0"} 10
+hyperlane_contract_sync_stored_events{agent="relayer",chain="aptoslocalnet2",data_type="dispatched_messages",hyperlane_baselib_version="0.1.0"} 10
+hyperlane_contract_sync_stored_events{agent="relayer",chain="aptoslocalnet2",data_type="gas_payments",hyperlane_baselib_version="0.1.0"} 10
+# HELP hyperlane_last_known_message_nonce Last known message nonce
+# TYPE hyperlane_last_known_message_nonce gauge
+hyperlane_last_known_message_nonce{agent="relayer",hyperlane_baselib_version="0.1.0",origin="aptoslocalnet1",phase="message_processed",remote="aptoslocalnet1"} 0
+hyperlane_last_known_message_nonce{agent="relayer",hyperlane_baselib_version="0.1.0",origin="aptoslocalnet1",phase="message_processed",remote="aptoslocalnet2"} 9
+hyperlane_last_known_message_nonce{agent="relayer",hyperlane_baselib_version="0.1.0",origin="aptoslocalnet1",phase="processor_loop",remote="any"} 9
+hyperlane_last_known_message_nonce{agent="relayer",hyperlane_baselib_version="0.1.0",origin="aptoslocalnet1",phase="processor_loop",remote="aptoslocalnet1"} 0
+hyperlane_last_known_message_nonce{agent="relayer",hyperlane_baselib_version="0.1.0",origin="aptoslocalnet1",phase="processor_loop",remote="aptoslocalnet2"} 9
+hyperlane_last_known_message_nonce{agent="relayer",hyperlane_baselib_version="0.1.0",origin="aptoslocalnet2",phase="message_processed",remote="aptoslocalnet1"} 9
+hyperlane_last_known_message_nonce{agent="relayer",hyperlane_baselib_version="0.1.0",origin="aptoslocalnet2",phase="message_processed",remote="aptoslocalnet2"} 0
+hyperlane_last_known_message_nonce{agent="relayer",hyperlane_baselib_version="0.1.0",origin="aptoslocalnet2",phase="processor_loop",remote="any"} 9
+hyperlane_last_known_message_nonce{agent="relayer",hyperlane_baselib_version="0.1.0",origin="aptoslocalnet2",phase="processor_loop",remote="aptoslocalnet1"} 9
+hyperlane_last_known_message_nonce{agent="relayer",hyperlane_baselib_version="0.1.0",origin="aptoslocalnet2",phase="processor_loop",remote="aptoslocalnet2"} 0
+# HELP hyperlane_messages_processed_count Number of messages processed
+# TYPE hyperlane_messages_processed_count counter
+hyperlane_messages_processed_count{agent="relayer",hyperlane_baselib_version="0.1.0",origin="aptoslocalnet1",remote="aptoslocalnet1"} 0
+hyperlane_messages_processed_count{agent="relayer",hyperlane_baselib_version="0.1.0",origin="aptoslocalnet1",remote="aptoslocalnet2"} 10
+hyperlane_messages_processed_count{agent="relayer",hyperlane_baselib_version="0.1.0",origin="aptoslocalnet2",remote="aptoslocalnet1"} 10
+hyperlane_messages_processed_count{agent="relayer",hyperlane_baselib_version="0.1.0",origin="aptoslocalnet2",remote="aptoslocalnet2"} 0
+# HELP hyperlane_operations_processed_count Number of operations processed
+# TYPE hyperlane_operations_processed_count counter
+hyperlane_operations_processed_count{agent="relayer",chain="aptoslocalnet1",hyperlane_baselib_version="0.1.0",phase="confirmed"} 10
+hyperlane_operations_processed_count{agent="relayer",chain="aptoslocalnet1",hyperlane_baselib_version="0.1.0",phase="dropped"} 0
+hyperlane_operations_processed_count{agent="relayer",chain="aptoslocalnet1",hyperlane_baselib_version="0.1.0",phase="failed"} 13
+hyperlane_operations_processed_count{agent="relayer",chain="aptoslocalnet1",hyperlane_baselib_version="0.1.0",phase="prepared"} 10
+hyperlane_operations_processed_count{agent="relayer",chain="aptoslocalnet1",hyperlane_baselib_version="0.1.0",phase="reorged"} 0
+hyperlane_operations_processed_count{agent="relayer",chain="aptoslocalnet1",hyperlane_baselib_version="0.1.0",phase="submitted"} 10
+hyperlane_operations_processed_count{agent="relayer",chain="aptoslocalnet2",hyperlane_baselib_version="0.1.0",phase="confirmed"} 10
+hyperlane_operations_processed_count{agent="relayer",chain="aptoslocalnet2",hyperlane_baselib_version="0.1.0",phase="dropped"} 0
+hyperlane_operations_processed_count{agent="relayer",chain="aptoslocalnet2",hyperlane_baselib_version="0.1.0",phase="failed"} 15
+hyperlane_operations_processed_count{agent="relayer",chain="aptoslocalnet2",hyperlane_baselib_version="0.1.0",phase="prepared"} 10
+hyperlane_operations_processed_count{agent="relayer",chain="aptoslocalnet2",hyperlane_baselib_version="0.1.0",phase="reorged"} 0
+hyperlane_operations_processed_count{agent="relayer",chain="aptoslocalnet2",hyperlane_baselib_version="0.1.0",phase="submitted"} 10
+# HELP hyperlane_span_count Number of times a span was exited
+# TYPE hyperlane_span_count counter
+hyperlane_span_count{agent="relayer",hyperlane_baselib_version="0.1.0",span_name="build",span_target="hyperlane_base::settings::signers"} 100
+hyperlane_span_count{agent="relayer",hyperlane_baselib_version="0.1.0",span_name="build",span_target="relayer::msg::metadata::base"} 48
+hyperlane_span_count{agent="relayer",hyperlane_baselib_version="0.1.0",span_name="count",span_target="hyperlane_aptos::mailbox"} 32
+hyperlane_span_count{agent="relayer",hyperlane_baselib_version="0.1.0",span_name="default_ism",span_target="hyperlane_aptos::mailbox"} 48
+hyperlane_span_count{agent="relayer",hyperlane_baselib_version="0.1.0",span_name="delivered",span_target="hyperlane_aptos::mailbox"} 68
+hyperlane_span_count{agent="relayer",hyperlane_baselib_version="0.1.0",span_name="fetch_checkpoint",span_target="hyperlane_base::types::multisig"} 48
+hyperlane_span_count{agent="relayer",hyperlane_baselib_version="0.1.0",span_name="fetch_logs",span_target="hyperlane_aptos::interchain_gas"} 2
+hyperlane_span_count{agent="relayer",hyperlane_baselib_version="0.1.0",span_name="from_path",span_target="hyperlane_base::db::rocks"} 1
+hyperlane_span_count{agent="relayer",hyperlane_baselib_version="0.1.0",span_name="prepare",span_target="relayer::msg::pending_message"} 251
+hyperlane_span_count{agent="relayer",hyperlane_baselib_version="0.1.0",span_name="process",span_target="hyperlane_aptos::mailbox"} 20
+hyperlane_span_count{agent="relayer",hyperlane_baselib_version="0.1.0",span_name="process_estimate_costs",span_target="hyperlane_aptos::mailbox"} 20
+hyperlane_span_count{agent="relayer",hyperlane_baselib_version="0.1.0",span_name="recipient_ism",span_target="hyperlane_aptos::mailbox"} 48
+hyperlane_span_count{agent="relayer",hyperlane_baselib_version="0.1.0",span_name="sequence_and_tip",span_target="hyperlane_aptos::mailbox"} 32
+hyperlane_span_count{agent="relayer",hyperlane_baselib_version="0.1.0",span_name="store_logs",span_target="hyperlane_base::db::rocks::hyperlane_db"} 10
+hyperlane_span_count{agent="relayer",hyperlane_baselib_version="0.1.0",span_name="submit",span_target="relayer::msg::pending_message"} 20
+hyperlane_span_count{agent="relayer",hyperlane_baselib_version="0.1.0",span_name="update_to_index",span_target="relayer::merkle_tree_builder"} 20
+# HELP hyperlane_span_duration_seconds Duration from tracing span creation to span destruction
+# TYPE hyperlane_span_duration_seconds counter
+hyperlane_span_duration_seconds{agent="relayer",hyperlane_baselib_version="0.1.0",span_name="build",span_target="hyperlane_base::settings::signers"} 0.019221969999999994
+hyperlane_span_duration_seconds{agent="relayer",hyperlane_baselib_version="0.1.0",span_name="build",span_target="relayer::msg::metadata::base"} 4.355220228
+hyperlane_span_duration_seconds{agent="relayer",hyperlane_baselib_version="0.1.0",span_name="count",span_target="hyperlane_aptos::mailbox"} 0.30092789600000003
+hyperlane_span_duration_seconds{agent="relayer",hyperlane_baselib_version="0.1.0",span_name="default_ism",span_target="hyperlane_aptos::mailbox"} 0.749162767
+hyperlane_span_duration_seconds{agent="relayer",hyperlane_baselib_version="0.1.0",span_name="delivered",span_target="hyperlane_aptos::mailbox"} 0.924770265
+hyperlane_span_duration_seconds{agent="relayer",hyperlane_baselib_version="0.1.0",span_name="fetch_checkpoint",span_target="hyperlane_base::types::multisig"} 0.03688505899999999
+hyperlane_span_duration_seconds{agent="relayer",hyperlane_baselib_version="0.1.0",span_name="fetch_logs",span_target="hyperlane_aptos::interchain_gas"} 0.044795300999999996
+hyperlane_span_duration_seconds{agent="relayer",hyperlane_baselib_version="0.1.0",span_name="from_path",span_target="hyperlane_base::db::rocks"} 0.030611587
+hyperlane_span_duration_seconds{agent="relayer",hyperlane_baselib_version="0.1.0",span_name="prepare",span_target="relayer::msg::pending_message"} 7.820914397999998
+hyperlane_span_duration_seconds{agent="relayer",hyperlane_baselib_version="0.1.0",span_name="process",span_target="hyperlane_aptos::mailbox"} 11.261328045
+hyperlane_span_duration_seconds{agent="relayer",hyperlane_baselib_version="0.1.0",span_name="process_estimate_costs",span_target="hyperlane_aptos::mailbox"} 0.5142598859999999
+hyperlane_span_duration_seconds{agent="relayer",hyperlane_baselib_version="0.1.0",span_name="recipient_ism",span_target="hyperlane_aptos::mailbox"} 0.7516735290000001
+hyperlane_span_duration_seconds{agent="relayer",hyperlane_baselib_version="0.1.0",span_name="sequence_and_tip",span_target="hyperlane_aptos::mailbox"} 0.3608291959999999
+hyperlane_span_duration_seconds{agent="relayer",hyperlane_baselib_version="0.1.0",span_name="store_logs",span_target="hyperlane_base::db::rocks::hyperlane_db"} 0.004011572
+hyperlane_span_duration_seconds{agent="relayer",hyperlane_baselib_version="0.1.0",span_name="submit",span_target="relayer::msg::pending_message"} 11.275271641000002
+hyperlane_span_duration_seconds{agent="relayer",hyperlane_baselib_version="0.1.0",span_name="update_to_index",span_target="relayer::merkle_tree_builder"} 0.060803781
+# HELP hyperlane_span_events_total Number of span events (logs and time metrics) emitted by level
+# TYPE hyperlane_span_events_total counter
+hyperlane_span_events_total{agent="relayer",event_level="debug",hyperlane_baselib_version="0.1.0"} 180
+hyperlane_span_events_total{agent="relayer",event_level="info",hyperlane_baselib_version="0.1.0"} 326
+# HELP hyperlane_submitter_queue_length Submitter queue length
+# TYPE hyperlane_submitter_queue_length gauge
+hyperlane_submitter_queue_length{agent="relayer",hyperlane_baselib_version="0.1.0",queue_name="confirm_queue",remote="aptoslocalnet1"} 0
+hyperlane_submitter_queue_length{agent="relayer",hyperlane_baselib_version="0.1.0",queue_name="confirm_queue",remote="aptoslocalnet2"} 0
+hyperlane_submitter_queue_length{agent="relayer",hyperlane_baselib_version="0.1.0",queue_name="prepare_queue",remote="aptoslocalnet1"} 0
+hyperlane_submitter_queue_length{agent="relayer",hyperlane_baselib_version="0.1.0",queue_name="prepare_queue",remote="aptoslocalnet2"} 0

@@ -39,6 +39,7 @@ function fund_and_publish() {
 }
 
 LN1_ADDRESS_MATHING="--named-addresses hp_library=$LN1_LIBRARY_ADDRESS,hp_validator=$LN1_VALIDATOR_ANNOUNCE_ADDRESS,hp_isms=$LN1_ISMS_ADDRESS,hp_igps=$LN1_IGPS_ADDRESS,hp_mailbox=$LN1_MAILBOX_ADDRESS,hp_router=$LN1_ROUTER_ADDRESS,examples=$LN1_EXAMPLES_ADDRESS"
+echo "LN1_ADDRESS_MATHING=$LN1_ADDRESS_MATHING"
 
 function pub_library() {
   fund_and_publish "library" $LN1_LIBRARY_ADDRESS "./e2e/aptos-test-keys/localnet1/library-keypair.json" "$LN1_ADDRESS_MATHING" "./library"

@@ -87,7 +87,7 @@ pub struct GasPaymentEventData {
     /// gas amount
     pub gas_amount: String,
     /// quoted gas payment
-    pub required_amount: String,
+    pub required_payment: String,
     /// block number
     pub block_height: String,
     /// hash of transaction
@@ -107,7 +107,7 @@ impl TryInto<InterchainGasPayment> for GasPaymentEventData {
     fn try_into(self) -> Result<InterchainGasPayment, Self::Error> {
         Ok(InterchainGasPayment {
             message_id: utils::convert_hex_string_to_h256(&self.message_id).unwrap(),
-            payment: U256::from_str(&self.required_amount)
+            payment: U256::from_str(&self.required_payment)
                 .map_err(ChainCommunicationError::from_other)
                 .unwrap(),
             gas_amount: U256::from_str(&self.gas_amount)

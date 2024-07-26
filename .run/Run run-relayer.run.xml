@@ -1,0 +1,53 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Run run-relayer" type="CargoCommandRunConfiguration" factoryName="Cargo Command">
+    <option name="command" value="run --package relayer --bin relayer" />
+    <option name="workingDirectory" value="file://$PROJECT_DIR$/rust" />
+    <envs>
+      <env name="HYP_BASE_LOCAL_BIN" value="$USER_HOME$/.local/bin" />
+      <env name="HYP_BASE_RUST_BACKTRACE" value="full" />
+      <env name="HYP_BASE_LOG_FORMAT" value="compact" />
+      <env name="HYP_BASE_LOG_LEVEL" value="debug" />
+      <env name="HYP_BASE_CHAINS_TEST1_INDEX_CHUNK" value="1" />
+      <env name="HYP_BASE_CHAINS_TEST2_INDEX_CHUNK" value="1" />
+      <env name="HYP_BASE_CHAINS_TEST3_INDEX_CHUNK" value="1" />
+      <env name="HYP_BASE_CHAINS_TEST1_CUSTOMRPCURLS" value="http://127.0.0.1:8545,http://127.0.0.1:8545,http://127.0.0.1:8545" />
+      <env name="HYP_BASE_CHAINS_TEST1_RPCCONSENSUSTYPE" value="quorum" />
+      <env name="HYP_BASE_CHAINS_TEST2_CUSTOMRPCURLS" value="http://127.0.0.1:8545,http://127.0.0.1:8545,http://127.0.0.1:8545" />
+      <env name="HYP_BASE_CHAINS_TEST2_RPCCONSENSUSTYPE" value="fallback" />
+      <env name="HYP_BASE_CHAINS_TEST3_CUSTOMRPCURLS" value="http://127.0.0.1:8545" />
+      <env name="HYP_BASE_CHAINS_APTISLOCALNET1_RPCCONSENSUSTYPE" value="httpFallback" />
+      <env name="HYP_BASE_CHAINS_APTOSLOCALNET2_RPCCONSENSUSTYPE" value="httpFallback" />
+      <env name="HYP_BASE_CHAINS_APTOSLOCALNET1_SIGNER_KEY" value="0xb25d6937002ecd4d79c7bdfddc0053febc8896f2109e96c45bf69efd84544cd5" />
+      <env name="HYP_BASE_CHAINS_APTOSLOCALNET2_SIGNER_KEY" value="0xe299c1e6e1f89b4ed2992782137e24d5edbfc51bb702635a85ed6b687c2b5988" />
+      <env name="HYP_BASE_CHAINS_TEST1_BLOCKS_REORGPERIOD" value="0" />
+      <env name="HYP_BASE_CHAINS_TEST2_BLOCKS_REORGPERIOD" value="0" />
+      <env name="HYP_BASE_CHAINS_TEST3_BLOCKS_REORGPERIOD" value="0" />
+      <env name="HYP_BASE_REORGPERIOD" value="0" />
+      <env name="HYP_BASE_INTERVAL" value="5" />
+      <env name="HYP_BASE_CHAINS_APTOSLOCALNET1_MERKLETREEHOOK" value="0x476307c25c54b76b331a4e3422ae293ada422f5455efed1553cf4de1222a108f" />
+      <env name="HYP_BASE_CHAINS_APTOSLOCALNET2_MERKLETREEHOOK" value="0xd338e68ca12527e77cab474ee8ec91ffa4e6512ced9ae8f47e28c5c7c4804b78" />
+      <env name="HYP_BASE_CHECKPOINTSYNCER_TYPE" value="localStorage" />
+      <env name="HYP_BASE_LOG_LEVEL" value="0" />
+      <env name="HYP_BASE_CHAINS_APTOSLOCALNET1_CONNECTION_URL" value="http://127.0.0.1:8080/v1" />
+      <env name="HYP_BASE_CHAINS_APTOSLOCALNET2_CONNECTION_URL" value="http://127.0.0.1:8080/v1" />
+      <env name="HYP_BASE_DESTINATIONCHAINNAMES" value="aptoslocalnet1,aptoslocalnet2" />
+      <env name="HYP_BASE_METRICSPORT" value="9096" />
+      <env name="HYP_BASE_DB" value="/tmp/hp/relayer0" />
+      <env name="HYP_BASE_ORIGINCHAINNAME" value="aptoslocalnet1" />
+      <env name="HYP_BASE_VALIDATOR_KEY" value="0xb25d6937002ecd4d79c7bdfddc0053febc8896f2109e96c45bf69efd84544cd5" />
+      <env name="HYP_BASE_CHECKPOINTSYNCER_PATH" value="/tmp/hp/checkpoints0" />
+    </envs>
+    <option name="emulateTerminal" value="true" />
+    <option name="channel" value="DEFAULT" />
+    <option name="requiredFeatures" value="true" />
+    <option name="allFeatures" value="false" />
+    <option name="withSudo" value="false" />
+    <option name="buildTarget" value="REMOTE" />
+    <option name="backtrace" value="SHORT" />
+    <option name="isRedirectInput" value="false" />
+    <option name="redirectInputPath" value="" />
+    <method v="2">
+      <option name="CARGO.BUILD_TASK_PROVIDER" enabled="true" />
+    </method>
+  </configuration>
+</component>

@@ -1,0 +1,10 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Test igp_tests::pay_gas_and_beneficiary_test" type="AptosCommandConfiguration" factoryName="AnyCommand">
+    <option name="command" value="move test --package-dir ./igps --named-addresses hp_library=0xe818394d0f37cd6accd369cdd4e723c8dc4f9b8d2517264fec3d9e8cabc66541,hp_validator=0xa4a4eb4bab83650ba62cabe9ce429ad021b29c12f2fbf808768838255c7e191d,hp_isms=0x6bbae7820a27ff21f28ba5a4b64c8b746cdd95e2b3264a686dd15651ef90a2a1,hp_igps=0xc5cb1f1ce6951226e9c46ce8d42eda1ac9774a0fef91e2910939119ef0c95568,hp_mailbox=0x476307c25c54b76b331a4e3422ae293ada422f5455efed1553cf4de1222a108f,hp_router=0xafce3ab5dc5d513c13e746cef4d65bf54f4abdcb34ea8ab0728d01c035610e3d,examples=0xd1eaef049ac77e63f2ffefae43e14c1a73700f25cde849b6614dc3f3580123fc --filter igp_tests::pay_gas_and_beneficiary_test --skip-fetch-latest-git-deps" />
+    <option name="workingDirectory" value="file://$PROJECT_DIR$/move/igps" />
+    <envs>
+      <env name="APTOS_DISABLE_TELEMETRY" value="true" />
+    </envs>
+    <method v="2" />
+  </configuration>
+</component>

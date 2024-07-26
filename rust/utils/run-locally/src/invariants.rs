@@ -11,6 +11,7 @@ use crate::solana::solana_termination_invariants_met;
 // sent before and after the relayer spins up, to avoid rounding errors.
 pub const APTOS_MESSAGES_EXPECTED: u32 = 20;
 pub const SOL_MESSAGES_EXPECTED: u32 = 0; //20;
+const SCRAPER_PORT: &str = "9092";
 
 /// Use the metrics to check if the relayer queues are empty and the expected
 /// number of messages have been sent.
@@ -23,7 +24,7 @@ pub fn termination_invariants_met(
     let total_messages_expected =
         eth_messages_expected + SOL_MESSAGES_EXPECTED + APTOS_MESSAGES_EXPECTED;
 
-    let lengths = fetch_metric("9092", "hyperlane_submitter_queue_length", &hashmap! {})?;
+    let lengths = fetch_metric(SCRAPER_PORT, "hyperlane_submitter_queue_length", &hashmap! {})?;
     assert!(!lengths.is_empty(), "Could not find queue length metric");
     if lengths.iter().any(|n| *n != 0) {
         log!("Relayer queues not empty. Lengths: {:?}", lengths);
@@ -33,7 +34,7 @@ pub fn termination_invariants_met(
     // Also ensure the counter is as expected (total number of messages), summed
     // across all mailboxes.
     let msg_processed_count =
-        fetch_metric("9092", "hyperlane_messages_processed_count", &hashmap! {})?
+        fetch_metric(SCRAPER_PORT, "hyperlane_messages_processed_count", &hashmap! {})?
             .iter()
             .sum::<u32>();
     if msg_processed_count != total_messages_expected {
@@ -45,17 +46,13 @@ pub fn termination_invariants_met(
         return Ok(false);
     }
 
-    // TODO!
-    log!("Teset success. Skipping gas payment invariants for now");
-    return Ok(true);
-
     let gas_payment_events_count = fetch_metric(
-        "9092",
+        SCRAPER_PORT,
         "hyperlane_contract_sync_stored_events",
         &hashmap! {"data_type" => "gas_payments"},
     )?
-    .iter()
-    .sum::<u32>();
+        .iter()
+        .sum::<u32>();
 
     // TestSendReceiver randomly breaks gas payments up into
     // two. So we expect at least as many gas payments as messages.
@@ -70,12 +67,16 @@ pub fn termination_invariants_met(
 
 
     let dispatched_messages_scraped = fetch_metric(
-        "9093",
+        SCRAPER_PORT,
         "hyperlane_contract_sync_stored_events",
-        &hashmap! {"data_type" => "message_dispatch"},
-    )?
-    .iter()
-    .sum::<u32>();
+        &hashmap! {"data_type" => "dispatched_messages"},
+    )
+        .map_err(|err| {
+            log!("error getting hyperlane_contract_sync_stored_events: {:?}", err);
+            err
+        })?
+        .iter()
+        .sum::<u32>();
     if dispatched_messages_scraped != eth_messages_expected {
         log!(
             "Scraper has scraped {} dispatched messages, expected {}",
@@ -86,12 +87,12 @@ pub fn termination_invariants_met(
     }
 
     let gas_payments_scraped = fetch_metric(
-        "9093",
+        SCRAPER_PORT,
         "hyperlane_contract_sync_stored_events",
         &hashmap! {"data_type" => "gas_payment"},
     )?
-    .iter()
-    .sum::<u32>();
+        .iter()
+        .sum::<u32>();
 
     // The relayer and scraper should have the same number of gas payments.
     // For now, treat as an exception in the invariants.
@@ -106,12 +107,12 @@ pub fn termination_invariants_met(
     }
 
     let delivered_messages_scraped = fetch_metric(
-        "9093",
+        SCRAPER_PORT,
         "hyperlane_contract_sync_stored_events",
         &hashmap! {"data_type" => "message_delivery"},
     )?
-    .iter()
-    .sum::<u32>();
+        .iter()
+        .sum::<u32>();
     if delivered_messages_scraped != eth_messages_expected {
         log!(
             "Scraper has scraped {} delivered messages, expected {}",

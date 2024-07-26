@@ -9,7 +9,7 @@ use hyperlane_core::{
 };
 pub use metrics::ContractSyncMetrics;
 use tokio::time::sleep;
-use tracing::{debug, info};
+use tracing::{debug, info, error};
 
 use crate::settings::IndexSettings;
 
@@ -66,7 +66,10 @@ where
                 CursorAction::Query(range) => {
                     debug!(?range, "Looking for for events in index range");
 
-                    let logs = self.indexer.fetch_logs(range.clone()).await?;
+                    let logs = self.indexer.fetch_logs(range.clone()).await
+                        .map_err(|err| {
+                            error!("fetch_log error{:?}", err); err
+                        })?;
 
                     info!(
                         ?range,

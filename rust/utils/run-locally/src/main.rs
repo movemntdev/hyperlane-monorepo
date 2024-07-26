@@ -356,7 +356,7 @@ fn main() -> ExitCode {
         .cmd("kathy")
         .arg("messages", (config.kathy_messages / 2).to_string())
         .arg("timeout", "1000");
-    // kathy_env.clone().run().join();
+     //kathy_env.clone().run().join();
 
     // spawn the rest of the validators
     for (i, validator_env) in validator_envs.into_iter().enumerate().skip(1) {

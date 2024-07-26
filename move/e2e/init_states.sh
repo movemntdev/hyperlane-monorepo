@@ -86,7 +86,7 @@ function send_hello_ln1_to_ln2() {
 
   cd "$(pwd)"
 
-  cd ../examples && aptos move run --function-id $LN1_EXAMPLES_ADDRESS::hello_world::send_message --args u32:$APTOSLOCALNET2_DOMAIN string:"Hello World!" --url $REST_API_URL --private-key-file "../e2e/aptos-test-keys/localnet1/examples-keypair.json" --assume-yes
+  cd ../examples && aptos move run --function-id $LN1_EXAMPLES_ADDRESS::hello_world::send_message_with_gas --args u32:$APTOSLOCALNET2_DOMAIN string:"Hello World!" --url $REST_API_URL --private-key-file "../e2e/aptos-test-keys/localnet1/examples-keypair.json" --assume-yes
 }
 function send_hello_ln2_to_ln1() {
   
@@ -94,7 +94,7 @@ function send_hello_ln2_to_ln1() {
 
   cd "$(pwd)"
 
-  cd ../examples && aptos move run --function-id $LN2_EXAMPLES_ADDRESS::hello_world::send_message --args u32:$APTOSLOCALNET1_DOMAIN string:"Hello World!" --url $REST_API_URL --private-key-file "../e2e/aptos-test-keys/localnet2/examples-keypair.json" --assume-yes
+  cd ../examples && aptos move run --function-id $LN2_EXAMPLES_ADDRESS::hello_world::send_message_with_gas --args u32:$APTOSLOCALNET1_DOMAIN string:"Hello World!" --url $REST_API_URL --private-key-file "../e2e/aptos-test-keys/localnet2/examples-keypair.json" --assume-yes
 }
 
 #`address:0x1 bool:true u8:0 u256:1234 "bool:[true, false]" 'address:[["0xace", "0xbee"], []]'`
