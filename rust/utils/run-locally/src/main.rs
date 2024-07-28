@@ -33,7 +33,7 @@ use crate::ethereum::start_anvil;
 use crate::invariants::{
     termination_invariants_met, APTOS_MESSAGES_EXPECTED, SOL_MESSAGES_EXPECTED,
 };
-use crate::solana::*;
+
 use crate::utils::{concat_path, make_static, stop_child, AgentHandles, ArbitraryData, TaskHandle};
 
 mod aptos;
@@ -43,7 +43,6 @@ mod invariants;
 mod logging;
 mod metrics;
 mod program;
-mod solana;
 mod utils;
 
 /// These private keys are from hardhat/anvil's testing accounts.
@@ -127,7 +126,6 @@ impl Drop for State {
         for data in self.data.drain(..) {
             drop(data)
         }
-        fs::remove_dir_all(SOLANA_CHECKPOINT_LOCATION).unwrap_or_default();
     }
 }
 

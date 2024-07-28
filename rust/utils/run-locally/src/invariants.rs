@@ -5,7 +5,7 @@ use maplit::hashmap;
 
 use crate::fetch_metric;
 use crate::logging::log;
-use crate::solana::solana_termination_invariants_met;
+
 
 // This number should be even, so the messages can be split into two equal halves
 // sent before and after the relayer spins up, to avoid rounding errors.
