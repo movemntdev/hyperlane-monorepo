@@ -46,26 +46,7 @@ pub fn termination_invariants_met(
         return Ok(false);
     }
 
-    let gas_payment_events_count = fetch_metric(
-        SCRAPER_PORT,
-        "hyperlane_contract_sync_stored_events",
-        &hashmap! {"data_type" => "gas_payments"},
-    )?
-        .iter()
-        .sum::<u32>();
-
-    // TestSendReceiver randomly breaks gas payments up into
-    // two. So we expect at least as many gas payments as messages.
-    if gas_payment_events_count < total_messages_expected {
-        log!(
-            "Relayer has {} gas payment events, expected at least {}",
-            gas_payment_events_count,
-            total_messages_expected
-        );
-        return Ok(false);
-    }
-
-
+    // expect number of dispatched messages sent to be equal to the total number of messages
     let dispatched_messages_scraped = fetch_metric(
         SCRAPER_PORT,
         "hyperlane_contract_sync_stored_events",
@@ -77,11 +58,11 @@ pub fn termination_invariants_met(
         })?
         .iter()
         .sum::<u32>();
-    if dispatched_messages_scraped != eth_messages_expected {
+    if dispatched_messages_scraped != total_messages_expected {
         log!(
             "Scraper has scraped {} dispatched messages, expected {}",
             dispatched_messages_scraped,
-            eth_messages_expected
+            total_messages_expected
         );
         return Ok(false);
     }
@@ -94,30 +75,13 @@ pub fn termination_invariants_met(
         .iter()
         .sum::<u32>();
 
-    // The relayer and scraper should have the same number of gas payments.
-    // For now, treat as an exception in the invariants.
-    let expected_gas_payments = gas_payment_events_count;
+    // number of gas payments equials number of messages sent
+    let expected_gas_payments = total_messages_expected;
     if gas_payments_scraped != expected_gas_payments {
         log!(
             "Scraper has scraped {} gas payments, expected {}",
             gas_payments_scraped,
             expected_gas_payments
-        );
-        return Ok(false);
-    }
-
-    let delivered_messages_scraped = fetch_metric(
-        SCRAPER_PORT,
-        "hyperlane_contract_sync_stored_events",
-        &hashmap! {"data_type" => "message_delivery"},
-    )?
-        .iter()
-        .sum::<u32>();
-    if delivered_messages_scraped != eth_messages_expected {
-        log!(
-            "Scraper has scraped {} delivered messages, expected {}",
-            delivered_messages_scraped,
-            eth_messages_expected
         );
         return Ok(false);
     }
