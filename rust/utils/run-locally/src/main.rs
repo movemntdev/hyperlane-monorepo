@@ -14,7 +14,7 @@
 
 use std::path::Path;
 use std::{
-    env, fs,
+    env,
     process::{Child, ExitCode},
     sync::atomic::{AtomicBool, Ordering},
     thread::sleep,
@@ -31,7 +31,7 @@ use crate::aptos::*;
 use crate::config::Config;
 use crate::ethereum::start_anvil;
 use crate::invariants::{
-    termination_invariants_met, APTOS_MESSAGES_EXPECTED, SOL_MESSAGES_EXPECTED,
+    termination_invariants_met, APTOS_MESSAGES_EXPECTED,
 };
 
 use crate::utils::{concat_path, make_static, stop_child, AgentHandles, ArbitraryData, TaskHandle};
@@ -268,21 +268,6 @@ fn main() -> ExitCode {
                 )
         })
         .collect::<Vec<_>>();
-
-    let scraper_env = common_agent_env
-        .bin(concat_path(AGENT_BIN_PATH, "scraper"))
-        .hyp_env("CHAINS_TEST1_CONNECTION_TYPE", "httpQuorum")
-        .hyp_env("CHAINS_TEST1_CONNECTION_URL", "http://127.0.0.1:8545")
-        .hyp_env("CHAINS_TEST2_CONNECTION_TYPE", "httpQuorum")
-        .hyp_env("CHAINS_TEST2_CONNECTION_URL", "http://127.0.0.1:8545")
-        .hyp_env("CHAINS_TEST3_CONNECTION_TYPE", "httpQuorum")
-        .hyp_env("CHAINS_TEST3_CONNECTION_URL", "http://127.0.0.1:8545")
-        .hyp_env("CHAINSTOSCRAPE", "test1,test2,test3")
-        .hyp_env("METRICS", "9093")
-        .hyp_env(
-            "DB",
-            "postgresql://postgres:47221c18c610@localhost:5432/postgres",
-        );
 
     let mut state = State::default();
 

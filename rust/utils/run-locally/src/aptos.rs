@@ -1,14 +1,13 @@
 use std::env;
-use std::process::{Command, Stdio};
 use std::thread::sleep;
 use std::time::Duration;
 
 use crate::logging::log;
 use crate::program::Program;
-use crate::utils::{as_task, concat_path, AgentHandles, ArbitraryData, TaskHandle};
+use crate::utils::{as_task, AgentHandles, TaskHandle};
 use macro_rules_attribute::apply;
 
-use tempfile::{tempdir, NamedTempFile};
+use tempfile::{tempdir};
 use dirs;
 
 #[apply(as_task)]

@@ -16,9 +16,9 @@ const SCRAPER_PORT: &str = "9092";
 /// Use the metrics to check if the relayer queues are empty and the expected
 /// number of messages have been sent.
 pub fn termination_invariants_met(
-    config: &Config,
-    solana_cli_tools_path: &Path,
-    solana_config_path: &Path,
+    _config: &Config,
+    _solana_cli_tools_path: &Path,
+    _solana_config_path: &Path,
 ) -> eyre::Result<bool> {
     let eth_messages_expected = 0; // (config.kathy_messages / 2) as u32 * 2; // no eth messages sent
     let total_messages_expected =
